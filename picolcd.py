@@ -1,4 +1,27 @@
 #!/bin/env python3
+# pypicolcd, a module for driverless writing to picoLCD
+# Copyright (C) 2018  Jake Gustafson
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+about_msg = """
+pypicolcd  Copyright (C) 2018  Jake Gustafson
+This program comes with ABSOLUTELY NO WARRANTY.
+This is free software, and you are welcome to redistribute it
+under certain conditions; open LICENSE file in text editor for details.
+"""
+
 try:
     import usb
 except ImportError:
@@ -16,7 +39,6 @@ except ImportError:  # Python 3
     import tkinter as tk
     import tkinter.font as tkFont
     import tkinter.ttk as ttk
-
 
 # TODO: root = tk.Tk()  # never shown, just for font rendering
 
@@ -67,25 +89,35 @@ DC_DICT[0xc002] = this_dc
 
 def get_pixel_color(canvas, x, y):
     ids = canvas.find_overlapping(x, y, x, y)
-
     if len(ids) > 0:
-        index = ids[-1]
+        index = ids[-1]  # -1 gets top (last) graphics instruction
         color = canvas.itemcget(index, "fill")
         color = color.upper()
         if color != '':
-            return tk.Color[color.upper()]
+            return color.upper()
+    else:
+        print("[ picolcd.py ] WARNING in get_pixel_color: no color"
+              " at " + str((x, y)))
     return "WHITE"
 
-def get_pixels_of(canvas):
+def get_pixels_2d_of(canvas):
     width = int(canvas["width"])
     height = int(canvas["height"])
     colors = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            row.append(get_pixel_color(canvas, x, y))
+        colors.append(row)
+    return colors
 
-    for x in range(width):
-        column = []
-        for y in range(height):
-            column.append(get_pixel_color(canvas, x, y))
-        colors.append(column)
+def get_pixels_1d_of(canvas):
+    width = int(canvas["width"])
+    height = int(canvas["height"])
+    colors = []
+    for y in range(height):
+        for x in range(width):
+            colors.append(get_pixel_color(canvas, x, y))
     return colors
 
 
@@ -178,20 +210,84 @@ class PicoLcd:
                 self.framebuffers.append(self.framebuffer)
 
 
-
-    def draw_text(self, row, col, text):
+    # row,col: the y,x location (in that order; though if
+    # picolcd.dc["type"] is graphics, it will be a pixel location
+    # where row is the middle of the letters)
+    def draw_text(self, row, col, text, font=None):
         if self.dc["type"] == "graphics":
-            print("[ picolcd ] ERROR in draw_text:"
-                  " bitmap font, required for draw_text in "
-                  " graphics model type, is not yet implemented")
+            start_y = row
+            start_x = col
+            # print("[ picolcd ] ERROR in draw_text:"
+                  # " bitmap font, required for draw_text in "
+                  # " graphics model type, is not yet implemented")
+            canvas = tk.Canvas(width=self.dc["width"], height=self.dc["height"])
+            bg_id = canvas.create_rectangle(0, 0, self.dc["width"],
+                                            self.dc["height"],
+                                            fill="WHITE")
+            text_id = None
+            black_count = 0
+            unknowns = []
+            if font is not None:
+                text_id = canvas.create_text(
+                    start_x, start_y, anchor=tk.W,
+                    fill="BLACK", # fill="#000"
+                    text=text,
+                    font=font)
+            else:
+                text_id = canvas.create_text(
+                    start_x, start_y, anchor=tk.W,
+                    fill="BLACK",
+                    text=text)
+            on_count = 0
+            # pixels = get_pixels_1d_of(canvas)
+            # for p_i in range(len(pixels)):
+                # pixel = pixels[p_i]
+                # if pixel == "BLACK":
+                    # y = int(p_i / self.dc["width"])
+                    # x = int(p_i % self.dc["width"])
+                    # self.set_pixel(x, y, True, refresh_enable=False)
+                # elif pixel == "WHITE":
+                    # pass
+                # else:
+                    # if pixel not in unknowns:
+                        # unknowns.append(pixel)
+            rows = get_pixels_2d_of(canvas)
+            y = 0
+            for row in rows:
+                x = 0
+                for pixel in row:
+                    if pixel == "BLACK":
+                        on_count += 1
+                        self.set_pixel(x, y, True, refresh_enable=False)
+                    elif pixel == "WHITE":
+                        pass
+                    else:
+                        if pixel not in unknowns:
+                            unknowns.append(pixel)
+                    x += 1
+                y += 1
+
+            if len(unknowns) > 0:
+                print("[ PicoLcd ] WARNING in draw_text: offscreen"
+                      " surface had unknown pixels: "
+                      + str(unknowns))
+            # for y in range(self.dc["height"]):
+                # for x in range(start_x, self.dc["width"]):
+            if on_count < 1:
+                print("[ PicoLcd ] WARNING in draw_text: offscreen"
+                      + " buffer had only " + str(on_count)
+                      + " text pixels")
+
+            self.refresh()
             return 0
-        addr = {0: 0x80, 1: 0xc0, 2:0x94, 3:0xd4}[row] + col
-        result = self.wr(bytes(0x94, 0x00, 0x01, 0x00, 0x64, addr))
-        if result < 1:
-            print("[ picolcd ] ERROR: " + str(result)
-                  + "byte(s) written for address")
-        self.wr(bytes(OUT_REPORT_DATA, 0x01, 0x00, 0x01, len(text))
-                + text)
+        else:
+            addr = {0: 0x80, 1: 0xc0, 2:0x94, 3:0xd4}[row] + col
+            result = self.wr(bytes(0x94, 0x00, 0x01, 0x00, 0x64, addr))
+            if result < 1:
+                print("[ picolcd ] ERROR: " + str(result)
+                      + "byte(s) written for address")
+            self.wr(bytes(OUT_REPORT_DATA, 0x01, 0x00, 0x01, len(text))
+                    + text)
 
     # invalidate rectangle of lcd to force refresh to refresh them
     # next time refresh is called (if no params, then entire screen:
@@ -220,7 +316,7 @@ class PicoLcd:
                 # self.refresh_block(zone_i, block_i)
 
     # Refresh all or part of lcd from framebuffers
-    # where invalidated (where setpixel was called or other operation
+    # where invalidated (where set_pixel was called or other operation
     # was done). For advanced use, such as if you drew to a framebuffer
     # manually, call invalidate first to inform PicoLcd which
     # framebuffers changed
@@ -275,10 +371,18 @@ class PicoLcd:
             cmd3.extend(fb)
             result += self.wr(cmd3)
 
+    # Set a one-bit pixel to the value of on (invalidate block if
+    #   pixel differs from framebuffer or force_refresh_enable is True).
+    # on: determines whether to turn the pixel on or off
     # refresh_enable: draw the affected block from framebuffers
-    # force_refresh_enable: draw even if does not differ from current
-    def setpixel(self, x, y, on, refresh_enable=True, force_refresh_enable=False):
+    #   (if False, you will have to call refresh later (which will draw
+    #   all invalidated blocks automatically)
+    # force_refresh_enable: draw even if does not differ
+    #   from framebuffer
+    def set_pixel(self, x, y, on, refresh_enable=True, force_refresh_enable=False):
         # NOTE: one byte covers 8 pixels on y axis from landscape view
+        if force_refresh_enable:
+            refresh_enable=True
         zone_width = self.dc["width"] / self.dc["zones"]
         zone_i = int(x/zone_width)
         block_i = int(y/self.dc["blockrows"])
@@ -287,12 +391,12 @@ class PicoLcd:
         bit_i = y % self.dc["ppb"]
         byte_i = x % self.dc["block_size"]
         pixel = 1 << bit_i
-        if self.verbose_enable:
-            print("[ PicoLcd ] (verbose message in setpixel)"
-                  + " " + str((x,y)) + " results in"
-                  + " framebuffer[" + str((fb_i)) + "]"
-                  + " zone,block=" + str((zone_i, block_i))
-                  + " byte=" + str(byte_i) + " bit=" + str(bit_i))
+        # if self.verbose_enable:
+            # print("[ PicoLcd ] (verbose message in set_pixel)"
+                  # + " " + str((x,y)) + " results in"
+                  # + " framebuffer[" + str((fb_i)) + "]"
+                  # + " zone,block=" + str((zone_i, block_i))
+                  # + " byte=" + str(byte_i) + " bit=" + str(bit_i))
         if fb_i < len(self.framebuffers):
             framebuffer = self.framebuffers[fb_i]
             result = framebuffer[byte_i]
@@ -304,6 +408,8 @@ class PicoLcd:
                 else:
                     if not force_refresh_enable:
                         refresh_enable = False
+                    else:
+                        self.change_enables[fb_i] = True
             else:
                 if result & pixel > 0:
                     framebuffer[byte_i] ^= pixel
@@ -311,202 +417,23 @@ class PicoLcd:
                 else:
                     if not force_refresh_enable:
                         refresh_enable = False
+                    else:
+                        self.change_enables[fb_i] = True
             if refresh_enable:
+                # msg = "refreshing"
+                # if not self.change_enables[fb_i]:
+                    # msg = "not refreshing"
+                # print(msg + " " + str((zone_i, block_i)))
                 self.refresh_block(zone_i, block_i)
         else:
-            print("[ PicoLcd ] ERROR in setpixel: buffer "
+            print("[ PicoLcd ] ERROR in set_pixel: buffer "
                   + str(fb_i) + " does not exist in "
                   + str(len(self.framebuffers)) + "-len buffer list.")
 
-    # enable: True is black, as False allows backlight to show through
-    # this is very inaccurate, and not changed to match info in README yet
-    def _pokepixel(self, x, y, enable, diff_enable=True):
-        addr = None
-        print("[ picolcd ] ERROR in _pokepixel: Nothing done since"
-              " seems impossible (don't ever use _pokepixel)")
-        return 0
-        if self.dc["type"] == "text":
-            print("[ picolcd ] ERROR in _pokepixel: not available in"
-                  " text device type")
-            return 0
-        # see patched lcd4linux source on
-        # http://www.linuxconsulting.ro/picoLCD/
-        # * goto/write command is
-        #   [0x98, y, x, len, rawdata]
-        # 128, 192, 148, 212
-        # addr = {0: 0x80, 1: 0xc0, 2:0x94, 3:0xd4}[y] + x
-        data_len = 1
-        data = 1 << (x%self.dc["ppb"])
-        byte_x = int(x/self.dc["ppb"])  # since 1-bit graphics
-        pitch = int(self.dc["width"] / self.dc["ppb"])
-        byte_i = y * pitch + byte_x
-        # NOTE: official driver uses whole byte of framebuffer as bool
-        # but this code keeps actual copy of byte, where only bits are
-        # on where the pixel is on as per the destination (1-bit) format
-        dest_data = self.framebuffer[byte_i]
-        cs = int(byte_i/self.dc["chip_size"])
-
-        chipsel = cs << 2
-        # chipsel | 0x01 clears bottom (landscape right) of chip
-        # (only seems to work with relative positioning)
-        # self.wr(bytes(OUT_REPORT_DATA, y, x, data_len, data))
-        # if line is None:
-        # line = int(x/8)
-        chip_height_px = int(
-            (self.dc["chip_size"] * self.dc["ppb"])
-            / self.dc["width"]
-        )
-        local_y = y - (cs * chip_height_px)
-        sidestep = int(x/self.dc["ppb"])
-        halfchip_height = int(chip_height_px/2)
-        chipside = int(round(y/halfchip_height))
-        # for [5] there are 8 lines, so line b8|line could be:
-        # |0, |1, |2, |3, |4, |5, |6, |7
-        # b8, b9, ba, bb, bc, bd, be, bf
-        # starting from top down in landscape view
-
-        # chipsel (at [1]) is cs << 2 where cs is chip number 0-3
-        # (in the short command it is |1)
-        # 00, 04, 08, 0c (for long command)
-        # |1, |1, |1, |1
-        # 01, 05, 09, 0d (for short command)
-        cmd3 = [
-            OUT_REPORT_CMD_DATA,
-            byte_i, # chipsel | chipside,  # this is a BYTE
-            0x02,
-            0x00,
-            0x00,
-            0x00, # [5] sidestep,  # 0xb8|sidestep,  # 0xb8|line,
-            0x00,
-            0x00,
-            0x00,# 0x40,
-            0x00,
-            0x00,
-            data_len
-        ]
-
-        cmd4 = [
-            OUT_REPORT_DATA,
-            chipsel | chipside,
-            0x00,
-            0x00,
-            data_len
-        ]
-        cmd4_data_start = len(cmd4)
-        # for index in range(data_len):
-        if (not diff_enable) or ((data | dest_data) != dest_data):
-            # result_data = data
-            # if diff_enable:
-            result_data = data
-            # NOTE: official driver's frame buffer has OxFF
-            # if pLG_framebuffer[y * 256 + x] ^ self.dc["inverted"]:
-                # pixel |= (1 << bit);
-            # representing one bit (eight times bigger than chip_size)
-            # if self.framebuffer[byte_i) ^ self.dc["inverted"] > 0:
-                # if differs from framebuffer
-            result_data |= self.framebuffer[byte_i]
-            self.framebuffer[byte_i] = result_data
-
-            cmd3.append(result_data)
-            cmd4.append(result_data)
-            # self.wr(cmd3)
-            self.wr(cmd4)
-
-    def clear(self, val=0x00, data_len=32, line_len=8, chip_count=4):
-        # self.framebuffer = [0] * (self.dc["width"] * self.dc["height"])
+    def clear(self):
         self.reset_framebuffer()
-        if self.dc["type"] == "text":
-            for row in range(self.dc["height"]):  # formerly range(4)
-                self.draw_text(row, 0, " " * self.dc["width"])  # formerly * 20
-        else:  # self.dc["type"] == "graphics":
-            addr_count = 0
-            # print("[ picocld ] clearing pixels 2nd slowest way...")
-            # for row in range(self.dc["height"]):
-            # formerly range(4)
-                # self.setpixel(row, 0, " " * self.dc["width"])
-                # formerly * 20
-            # see patched lcd4linux source at
-            # http://www.linuxconsulting.ro/picoLCD/
-            for cs in range(chip_count):
-                chipsel = cs << 2
-                for line in range(line_len):
-                    # data = []
-                    cmd3 = [
-                        OUT_REPORT_CMD_DATA,
-                        chipsel,
-                        0x02,
-                        0x00,
-                        0x00,
-                        0xb8|line,
-                        0x00,
-                        0x00,
-                        0x40,
-                        0x00,
-                        0x00,
-                        data_len
-                    ]
-                    cmd3_data_start = len(cmd3)
-                    cmd4 = [
-                        OUT_REPORT_DATA,
-                        chipsel | 0x01,
-                        0x00,
-                        0x00,
-                        data_len
-                    ]
-                    cmd4_data_start = len(cmd4)
-                    for index in range(data_len):
-                        # data.append(0x00)
-                        # extend list for now--set to pixel later
-                        cmd3.append(0x00)
-                        cmd4.append(0x00)
-                    SCREEN_H = self.dc["height"]
-                    SCREEN_W = self.dc["width"]
-                    # each cs handles 1 64x64 pixel memory chip
-                    # each index paints 2 rows
-                    # (memory is addressed from landscape perspective)
-                    for index in range(data_len):
-                        pixel = val
-                        offset = cmd3_data_start + index
-
-                        for bit in range(8):
-                            x = cs * 64 + index;
-                            y = (line * 8 + bit + 0) % SCREEN_H
-                            # TODO (from official driver but seems
-                            # wrong since XOR does not change left
-                            # param bit if right param bit is zero):
-                            # if self.framebuffer[y * 256 + x] ^ \
-                                    # self.dc["inverted"] > 0:
-                            pixel |= (1 << bit)
-                        if val == 0x00:
-                            cmd3[offset] = 0x00
-                        else:
-                            cmd3[offset] = pixel
-                    for i in range(data_len):
-                        index = i + 32
-                        pixel = val
-                        for bit in range(8):
-                            x = cs * 64 + index;
-                            y = (line * 8 + bit + 0) % SCREEN_H
-                            # TODO (from official driver but seems
-                            # wrong since XOR does not change left
-                            # param bit if right param bit is zero):
-                            # if self.framebuffer[y * 256 + x] ^ self.dc["inverted"]:
-                            pixel |= (1 << bit)
-
-                        if val == 0x00:
-                            cmd4[cmd4_data_start + (index - 32)] = 0x00
-                        else:
-                            cmd4[cmd4_data_start + (index - 32)] = pixel
-                        addr_count += 1
-                    # clear top (landscape left) of this chip:
-                    self.wr(cmd3)
-                    # clear clear bottom (landscape right) of this chip:
-                    self.wr(cmd4)
-                # end for line
-            # end for cs (chip index)
-            print("[ picolcd ] cleared " + str(addr_count)
-                  + " block(s)")
-            pass
+        self.invalidate()
+        self.refresh()
 
     def backlight(self, brightness):
         self.wr(bytes(OUT_REPORT_LCD_BACKLIGHT, brightness))

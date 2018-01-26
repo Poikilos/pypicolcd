@@ -1,4 +1,20 @@
 #!/bin/env python3
+# pypicolcd, a module for driverless writing to picoLCD
+# Copyright (C) 2018  Jake Gustafson
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from datetime import datetime
 import time
 import binascii
@@ -86,9 +102,9 @@ def fill():
         for x in range(p.dc["width"]):
             # if x < y:
             set_canvas_pixel(x, y)
-            p.setpixel(x, y, True)
+            p.set_pixel(x, y, True)
             # else:
-                # p.setpixel(x, y, False)
+                # p.set_pixel(x, y, False)
 
 def draw_pattern():
     for y in range(64):
@@ -97,7 +113,7 @@ def draw_pattern():
         # if True:
         for x in range(128):
             set_canvas_pixel(x, y)
-            p.setpixel(x, y, True)
+            p.set_pixel(x, y, True)
 
 def draw_southwest_arrow():
     for y in range(64):
@@ -105,9 +121,9 @@ def draw_southwest_arrow():
             refresh_enable = False
             if x < y:
                 set_canvas_pixel(x, y)
-                p.setpixel(x, y, True, refresh_enable=refresh_enable)
+                p.set_pixel(x, y, True, refresh_enable=refresh_enable)
             # else:
-                # p.setpixel(x, y, False)
+                # p.set_pixel(x, y, False)
     # p.invalidate(zones=[0,1])  # was invalidated automatically anyway
     p.refresh()
 
@@ -121,9 +137,9 @@ def getorigin(eventorigin):
     y0 = eventorigin.y
     if draw_enable:
         set_canvas_pixel(x0, y0)
-        p.setpixel(x0, y0, True)
-        # p.setpixel(x0, y0, True)
-        # p.setpixel(x0, y0, True)
+        p.set_pixel(x0, y0, True)
+        # p.set_pixel(x0, y0, True)
+        # p.set_pixel(x0, y0, True)
         count += 1
         print("[ testing ] " + str(count) + " getorigin "
               + str(x0) + "," + str(y0))
@@ -141,7 +157,8 @@ root = tk.Tk()
 canvas = tk.Canvas(root, width=p.dc["width"], height=p.dc["height"])
 canvas.pack()
 canvas.create_rectangle(0, 0, p.dc["width"], p.dc["height"],
-    outline="#fff", fill="#fff")
+    outline="WHITE", fill="WHITE")
+    # outline="#fff", fill="#fff")
 
 root.wm_title("picolcd testing by expertmm")
 root.bind("<Button 1>", getorigin)
@@ -167,18 +184,19 @@ def render_text_click():
     # NOTE: y sets the MIDDLE of the text
     x = 0
     y = 16
-    if text_id is None:
-        text_id = canvas.create_text(
-            x, y, anchor=tk.W,
-            fill="#000",
-            text=text)
-            # font="Purisa"
-    else:
-        canvas.itemconfigure(text_id, text=text)
+    # if text_id is None:
+    text_id = canvas.create_text(
+        x, y, anchor=tk.W,
+        fill="#000",
+        text=text)
+        # font="Purisa"
+    # else:
+        # canvas.itemconfigure(text_id, text=text)
+    p.draw_text(y, x, text)
 
 render_text_btn = tk.Button(
     root,
-    text="Render Text\n(NOT YET IMPLEMENTED)",
+    text="Render This Text\n(NOT YET IMPLEMENTED)",
     command=render_text_click)
 render_text_btn.pack()
 
@@ -195,9 +213,12 @@ for i in range(max_byte_count):
     e.pack()
     entries.append(e)
 
+run_btn = None
+
 def load_cmd(cmd):
     global cmd_len
     cmd_len = len(cmd)
+    run_btn["text"] = "Send " + str(len(cmd)) + " bytes"
     for i in range(len(entries)):
         e = entries[i]
         e.delete(0, tk.END)
@@ -262,6 +283,9 @@ def clear_click():
     canvas.create_rectangle(0, 0, p.dc["width"], p.dc["height"],
     outline="#fff", fill="#fff")
 
+run_btn = tk.Button(root, text="Send 0 Bytes",
+                      command=run_click)
+run_btn.pack()
 load_short_btn = tk.Button(root, text="Load 6-byte cmd",
                            command=load_short_btn_click)
 load_short_btn.pack()
@@ -271,9 +295,6 @@ load_long_btn.pack()
 clear_btn = tk.Button(root, text="Clear LCD",
                       command=clear_click)
 clear_btn.pack()
-run_btn = tk.Button(root, text="Send These Bytes",
-                      command=run_click)
-run_btn.pack()
 #main.mainloop()
 #tk.mainloop()
 
@@ -291,7 +312,7 @@ run_btn.pack()
 # while True:
     # p.draw_text(3, 0, datetime.now().ctime()[:20])
     # time.sleep(0.5)
-# p.setpixel(4, 0, True)
+# p.set_pixel(4, 0, True)
 # draw_southwest_arrow()
 # draw_pattern()
 # fill()
