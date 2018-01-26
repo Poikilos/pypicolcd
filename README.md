@@ -1,10 +1,10 @@
 # pypicolcd
-Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver!)
-This is primarily for picoLCD 256x64 (graphics only) but may work with picoLCD 20x4 (text only)
+Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver!) by importing the PicoLcd class.
 
 ## Main Features
 * Draw without driver
 * Draw without dependencies other than pyusb (`sudo python3 -m pip install pyusb`)
+* This is primarily for picoLCD 256x64 (graphics only) but may work with picoLCD 20x4 (text only)
 
 ## Planned Features
 * Text
