@@ -4,13 +4,32 @@
 Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLcd class.
 ![kitten](https://github.com/expertmm/pypicolcd/raw/master/screenshot.jpg)
 
+
 ## Main Features
 * Easy: see <https://github.com/expertmm/pypicolcd/blob/master/example.py>
 * Draw without driver
-* Fast: refresh only refreshes zones invalidated--even faster if you do `picolcd.set_pixel(x, y, True, refresh_enable=False)` then call `picolcd.refresh()` after all `set_pixel` calls are done (`draw_text` does this automatically)
-* Draw without dependencies other than pyusb (`sudo python3 -m pip install pyusb`) and PIL (`sudo python3 -m pip install Pillow` or `sudo python -m pip install Pillow` or on arch, `pacman -Syu python-pillow`)
-* Fault-tolerant: draw text or image beyond range of screen, and automatically gets cropped (negative pos is allowed, which can be used for sprite animations if 64x64 cells in column or 256x64 cells in any layout)
-* Image Dithering (draw color image, and will automatically be dithered to 1-bit by luminosity)
+* Fast: refresh only refreshes zones invalidated
+* Draw without dependencies other than pyusb and PIL
+* Fault-tolerant: draw anything beyond range of LCD and will not crash nor miss good parts
+* Image Dithering: draw color image, and it will automatically be dithered to 1-bit by luminosity (threshold is also possible)
+
+
+## Requirements
+* pyusb (`sudo python3 -m pip install pyusb`)
+* PIL (`sudo python3 -m pip install Pillow` or `sudo python -m pip install Pillow` or on arch, `pacman -Syu python-pillow`)
+
+
+## Usage
+* Draw Image:
+  * pos is an x,y tuple
+  * see comments above draw_image in picousb.py
+  * negative pos is allowed, which can be used for sprite animations if 64x64 cells in single-column layout or 256x64 cells in any layout
+* Draw Text:
+  * see comments above draw_text in picousb.py
+  * row,col format is y,x order (is pixel location if `picolcd.dc["type"] == "graphics"`)
+* Pixel manipulation:
+  * For drawing many pixels at once, make your drawing faster by using `refresh_enable=False` (`picolcd.set_pixel(x, y, True, refresh_enable=False)`), then call `picolcd.refresh()` after all of your `set_pixel` calls are done (`draw_text` does this automatically)
+  * get_pixel only works for pixels created during the life of the PicoLcd object, since it gets pixels from the offscreen pixelbuffers
 
 
 ## Changes
@@ -23,6 +42,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 
 ## Known Issues
 * does not read state of buttons on the unit
+* there should be an option to disconnect from the device so it can be used by other processes
 
 
 ## Developer Notes
@@ -37,13 +57,21 @@ last_rect = picolcd.draw_text(
   Result will be a rect in format ((min_x, min_y), (max_x+1, max_y+1)) which can be later passed like `draw_text(y, x, "...", erase_rect=last_rect)`
 * erase_behind_enable option will not erase beyond actual drawn rect (such as, overwriting "111" with "---" will still show the top and bottom of the 1s unless you pass erase_rect param (see above)
 * contents of DC_DICT (and hence of picolcd.dc) should never be changed--they are device characteristics that define how the device operates at the lowest accessible level. If there is a different device not supported, the device should be added as a new entry in the DC_DICT, where the key is its USB device id.
+* buffer state is not stored across runs, so clearing LCD should be done
+  unless you only want to assign a certain slot to each program that
+  displays things to it.
 
 ### What is testing.py
-* Sends random bytes to your picoLCD without a driver!
-* Draw a pixel by clicking on the canvas.
+* Left Panel:
+  * Draw Text or Draw Image (threshold will be used if Threshold is checked above the threshold value textbox)
+    * If threshold unchecked, dithering will be used for Draw Image
+* Right Panel:
+  * Enable drawing a pixel by clicking on the canvas
+  * Sends any bytes you want to your picoLCD without a driver!
 
 ### Communication Protocol
 (only picoLCD 256x64 was tested)
+
 You must sent a byte array. Python will throw an exception if any integer in `this_list` is >255. `bytes(this_list)`.
 In LANDSCAPE orientation:
 * The term "block" here is used to refer to a 8x32 pixel area (made up of 32 bytes on the 1-bit screen buffer)
@@ -71,6 +99,6 @@ In LANDSCAPE orientation:
   * Press Start font family (prstart.ttf, prstartk.ttf): by codeman38 on <http://www.1001fonts.com/press-start-font.html> LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, custom license "fonts/press-start/license.txt"
     * naturally 8px high including descenders
   * flottflott font: by Peter Wiegel on <http://www.1001fonts.com/flottflott-font.html>  LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, SIL Open Font License (OFL) -- see "fonts/flottflott/Open Font License.txt" and "fonts/flottflott/OFL-FAQ.txt"
-* ilyessuti on pixnio: CC0 licensed kitten*.jpg (2017-12-21-14-52-48) <https://pixnio.com/fauna-animals/cats-and-kittens/field-grass-cute-summer-nature-cat-outdoor-flower>, retouch expertmm
+  * ilyessuti on pixnio: CC0 licensed kitten*.jpg (2017-12-21-14-52-48) <https://pixnio.com/fauna-animals/cats-and-kittens/field-grass-cute-summer-nature-cat-outdoor-flower>, retouch expertmm -- see "images/CC0.txt"
 * expertmm <https://github.com/expertmm> code and resources not mentioned above: resources created by expertmm are CC0 -- see "images/CC0.txt")
 * sphinx on excamera.com: http://excamera.com/sphinx/article-picolcd.html (61-line version of code that works with text model picoLCD 20x4 only)
