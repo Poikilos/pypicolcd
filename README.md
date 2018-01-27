@@ -2,14 +2,17 @@
 <https://github.com/expertmm/pypicolcd>
 Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLcd class.
 
+
 ## Main Features
 * Draw without driver
 * Fast: refresh only refreshes zones invalidated--even faster if you do `picolcd.set_pixel(x, y, True, refresh_enable=False)` then call `picolcd.refresh()` after all `set_pixel` calls are done (`draw_text` does this automatically)
 * Draw without dependencies other than pyusb (`sudo python3 -m pip install pyusb`) and PIL (`sudo python3 -m pip install Pillow` or `sudo python -m pip install Pillow` or on arch, `pacman -Syu python-pillow`)
 * Fault-tolerant: draw text or image beyond range of screen, and automatically gets cropped (negative pos is allowed, which can be used for sprite animations if 64x64 cells in column or 256x64 cells in any layout)
 
+
 ## Planned Features
 * more accurate image dithering
+
 
 ## Changes
 (2018-01-26)
@@ -18,7 +21,20 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 * draw text
 * draw image with font or dithering
 
+
+## Known Issues
+* erase_behind_enable option will not erase beyond actual drawn rect (such as, overwriting "111" with "---" will still show the top and bottom of the 1s
+
 ## Developer Notes
+* To get font rect (for graphics type devices only), try something like
+```python
+minimums, maximums = picolcd.draw_text(
+    y, x, "|-------|",  # row,col format is in y,x order even though
+                        # is pixel location if graphics type device
+    erase_behind_enable=True, refresh_enable=False)
+```
+  then clear the LCD, or just store the numbers to a file or your code so the process doesn't need to be repeated on each run.
+  (result will be minimums tuple containing x,y coordinates, and exclusive maximums in same format)
 
 ### What is testing.py
 * Sends random bytes to your picoLCD without a driver!

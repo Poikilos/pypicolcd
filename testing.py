@@ -184,15 +184,15 @@ def render_text_click():
     # NOTE: y sets the MIDDLE of the text
     x = 0
     y = 16
-    # if text_id is None:
-    text_id = canvas.create_text(
-        x, y, anchor=tk.W,
-        fill="#000",
-        text=text)
-        # font="Purisa"
-    # else:
-        # canvas.itemconfigure(text_id, text=text)
-    p.draw_text(y, x, text)
+    if text_id is None:
+        text_id = canvas.create_text(
+            x, y, anchor=tk.W,
+            fill="#000",
+            text=text)
+            # font="Purisa"
+    else:
+        canvas.itemconfigure(text_id, text=text)
+    p.draw_text(y, x, text, erase_behind_enable=True)
 
 render_text_btn = tk.Button(
     root,

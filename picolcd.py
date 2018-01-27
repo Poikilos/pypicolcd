@@ -213,16 +213,28 @@ class PicoLcd:
 
 
     # row,col: the y,x location (in that order; though if
-    #  picolcd.dc["type"] is graphics, it will be a pixel location
-    #  where row is the middle of the letters)
+    #   picolcd.dc["type"] is graphics, it will be a pixel location
+    #   where row is the middle of the letters)
     # font_path & font_size: only available for devices where
-    #  picolcd.dc["type"] is "graphics"--font_path can only be ttf
-    #  for now.
+    #   picolcd.dc["type"] is "graphics"--font_path can only be ttf
+    #   for now.
     # threshold: must be this opaque or higher--fine tuning may improve
-    #  readability for certain fonts at small sizes (higher values make
-    #  font slightly thinner)
+    #   readability for certain fonts at small sizes (higher values make
+    #   font slightly thinner)
+    # refresh_enable: whether to write the invalidated area from the
+    #   framebuffers to the device (however, for text type devices,
+    #   this is ignored and data is always written)
+    # returns: only if graphics type device, and only if
+    #   erase_behind_enable, returns tuple of tuples: minimums and
+    #   exclusive maximums actually drawn (this can be saved for your
+    #   future use, such as if you do refresh_enable=False just to
+    #   get the returns, then clear, then draw what you really wanted,
+    #   or just record the numbers for future use so that process
+    #   doesn't have to be repeated for each run)
     def draw_text(self, row, col, text, font_path=None, font_size=None,
-                  threshold=.5, erase_behind_enable=False):
+                  threshold=.5, erase_behind_enable=False,
+                  refresh_enable=True):
+        results = None, None
         if self.dc["type"] == "graphics":
             pos = (col, row)  # column is x, row is y
             on_count = 0
@@ -283,6 +295,9 @@ class PicoLcd:
                                                refresh_enable=False)
                 # TODO: draw text to PIL Image
                 if erase_behind_enable:
+                    results = (tuple(minimums),
+                               (maximums[0]+1, maximums[1]+1)
+                              )
                     for y in range(minimums[1], maximums[1] + 1):
                         for x in range(minimums[0], maximums[0] + 1):
                             self.set_pixel((x, y), False,
@@ -296,7 +311,8 @@ class PicoLcd:
                     print("[ PicoLcd ] WARNING in draw_text: offscreen"
                           + " buffer had " + str(on_count)
                           + " text pixels")
-                self.refresh()
+                if refresh_enable:
+                    self.refresh()
         else:
             addr = {0: 0x80, 1: 0xc0, 2:0x94, 3:0xd4}[row] + col
             result = self.wr(bytes(0x94, 0x00, 0x01, 0x00, 0x64, addr))
