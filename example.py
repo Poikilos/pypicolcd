@@ -1,5 +1,6 @@
 #!/bin/env python3
 from picolcd import PicoLcd
+from datetime import datetime
 # (example for) pypicolcd, a module for driverless writing to picoLCD
 # Copyright (C) 2018  Jake Gustafson
 
@@ -36,7 +37,9 @@ p.draw_image((x, y), "images/gradient-vertical.png", brightness=10)
 #p.draw_image((x, y), "images/checker-gradient.png", brightness=1)
 # NOTE: draw_text uses row,col format which is y,x order
 x, y = 0, 0
-p.draw_text(y, x, "Default font is ninepin")
+p.draw_text(
+    y, x,
+    "Default font is " + str(p.default_font_size) + "pt ninepin")
 x, y = 0, 16
 p.draw_text(y, x, "Flottflott font is unreadable below font size 11",
             font_path="fonts/Flottflott.ttf",
@@ -45,4 +48,8 @@ x, y = 0, 32
 p.draw_text(y, x, "Press Start is the name of this font",
             font_path="fonts/prstartk.ttf", font_size=7,
             erase_behind_enable=True)
-
+outline = ((192,8),(240,22))
+p.draw_rect(outline, True, filled=False)
+inner_rect = p.shrunken_rect(outline)
+x, y = inner_rect[0]
+p.draw_text(y+3, x+1, datetime.now().ctime()[11:20], erase_rect=inner_rect)
