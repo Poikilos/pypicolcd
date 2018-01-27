@@ -22,13 +22,13 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 ## Usage
 * Draw Image:
   * pos is an x,y tuple
-  * see comments above draw_image in picousb.py
   * negative pos is allowed, which can be used for sprite animations if 64x64 cells in single-column layout or 256x64 cells in any layout
+  * see comments above draw_image in picousb.py for more info
 * Draw Text:
-  * see comments above draw_text in picousb.py
   * row,col format is y,x order (is pixel location if `picolcd.dc["type"] == "graphics"`)
+  * see comments above draw_text in picousb.py for more info
 * Pixel manipulation:
-  * For drawing many pixels at once, make your drawing faster by using `refresh_enable=False` (`picolcd.set_pixel(x, y, True, refresh_enable=False)`), then call `picolcd.refresh()` after all of your `set_pixel` calls are done (`draw_text` does this automatically)
+  * For drawing many pixels at once, make your drawing faster by using `refresh_enable=False` (such as `picolcd.set_pixel(x, y, True, refresh_enable=False)`), then call `picolcd.refresh()` after all of your `set_pixel` calls are done (draw_text is an example of how to use this optimization)
   * get_pixel only works for pixels created during the life of the PicoLcd object, since it gets pixels from the offscreen pixelbuffers
 
 
@@ -41,8 +41,19 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 
 
 ## Known Issues
-* does not read state of buttons on the unit
-* there should be an option to disconnect from the device so it can be used by other processes
+* if possible, read state of buttons on the unit also via pyusb
+* add option to disconnect from the device so it can be used by other processes
+
+
+## Authors
+* resources from external sources:
+  * Ninepin font: by Digital Graphics Labs on <http://www.1001fonts.com/ninepin-font.html> LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification NOT allowed, Redistribution allowed, freeware license in "fonts/ninepin/!license.txt"
+  * Press Start font family (prstart.ttf, prstartk.ttf): by codeman38 on <http://www.1001fonts.com/press-start-font.html> LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, custom license "fonts/press-start/license.txt"
+    * naturally 8px high including descenders
+  * flottflott font: by Peter Wiegel on <http://www.1001fonts.com/flottflott-font.html>  LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, SIL Open Font License (OFL) -- see "fonts/flottflott/Open Font License.txt" and "fonts/flottflott/OFL-FAQ.txt"
+  * ilyessuti on pixnio: CC0 licensed kitten*.jpg (2017-12-21-14-52-48) <https://pixnio.com/fauna-animals/cats-and-kittens/field-grass-cute-summer-nature-cat-outdoor-flower>, retouch expertmm -- see "images/CC0.txt"
+* expertmm <https://github.com/expertmm> code and resources not mentioned above: resources created by expertmm are CC0 -- see "images/CC0.txt")
+* sphinx on excamera.com: http://excamera.com/sphinx/article-picolcd.html (61-line version of code that works with text model picoLCD 20x4 only)
 
 
 ## Developer Notes
@@ -91,14 +102,3 @@ In LANDSCAPE orientation:
     * writes next 32 bytes (short command must be called immediately after long command writes byte 31, due to relative positioning being the only way to access the right side of the chip aka odd zone)
     * therefore, accessing a block in an odd zone always requires first filling the even zone (for example, filling zone 1 block 3 requires filling zone 0 block 3 using long command with 32 bytes then calling short command to fill zone 1 block 3, where zone 1 and block 3 are implied by relative positioning, also with 32 bytes)
 * pypicolcd stores blocks separately (in picolcd.framebuffers list) so they can be sent to the graphics chip without slicing the buffer (only one framebuffer is created for text type devices)
-
-
-## Authors
-* resources from external sources:
-  * Ninepin font: by Digital Graphics Labs on <http://www.1001fonts.com/ninepin-font.html> LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification NOT allowed, Redistribution allowed, freeware license in "fonts/ninepin/!license.txt"
-  * Press Start font family (prstart.ttf, prstartk.ttf): by codeman38 on <http://www.1001fonts.com/press-start-font.html> LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, custom license "fonts/press-start/license.txt"
-    * naturally 8px high including descenders
-  * flottflott font: by Peter Wiegel on <http://www.1001fonts.com/flottflott-font.html>  LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, SIL Open Font License (OFL) -- see "fonts/flottflott/Open Font License.txt" and "fonts/flottflott/OFL-FAQ.txt"
-  * ilyessuti on pixnio: CC0 licensed kitten*.jpg (2017-12-21-14-52-48) <https://pixnio.com/fauna-animals/cats-and-kittens/field-grass-cute-summer-nature-cat-outdoor-flower>, retouch expertmm -- see "images/CC0.txt"
-* expertmm <https://github.com/expertmm> code and resources not mentioned above: resources created by expertmm are CC0 -- see "images/CC0.txt")
-* sphinx on excamera.com: http://excamera.com/sphinx/article-picolcd.html (61-line version of code that works with text model picoLCD 20x4 only)
