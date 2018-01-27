@@ -1,9 +1,11 @@
 # pypicolcd
 <https://github.com/expertmm/pypicolcd>
+
 Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLcd class.
 
 
 ## Main Features
+* Easy: see <https://github.com/expertmm/pypicolcd/blob/master/example.py>
 * Draw without driver
 * Fast: refresh only refreshes zones invalidated--even faster if you do `picolcd.set_pixel(x, y, True, refresh_enable=False)` then call `picolcd.refresh()` after all `set_pixel` calls are done (`draw_text` does this automatically)
 * Draw without dependencies other than pyusb (`sudo python3 -m pip install pyusb`) and PIL (`sudo python3 -m pip install Pillow` or `sudo python -m pip install Pillow` or on arch, `pacman -Syu python-pillow`)
@@ -19,7 +21,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 * make example.py
 * (fix use of refresh_enable) make force_refresh_enable=True work where on=False
 * draw text
-* draw image with font or dithering
+* draw image with threshold or dithering
 
 
 ## Known Issues
@@ -35,6 +37,7 @@ minimums, maximums = picolcd.draw_text(
 ```
   then clear the LCD, or just store the numbers to a file or your code so the process doesn't need to be repeated on each run.
   (result will be minimums tuple containing x,y coordinates, and exclusive maximums in same format)
+* contents of DC_DICT (and hence of picolcd.dc) should never be changed--they are device characteristics that define how the device operates at the lowest accessible level. If there is a different device not supported, the device should be added as a new entry in the DC_DICT, where the key is its USB device id.
 
 ### What is testing.py
 * Sends random bytes to your picoLCD without a driver!
@@ -51,7 +54,7 @@ In LANDSCAPE orientation:
 * There are 8 blocks (8 rows of blocks) from top to bottom (the official driver calls this a "line" which is misleading since it is an irreducible 8 pixels tall)
 * long command:
   * has 11 bytes plus a length byte and data bytes
-  * purpose is to select and write block and zone (but cannot select odd zones and cannot change x pixel location except in relative positioning which is not usually used with long command)
+  * purpose is to select&write block&zone (but cannot select odd zones and cannot change x pixel location except in relative positioning which is not usually used with long command)
   * absolute positioning when `[8]` is 0x40 (always use 0x40 for long command)
 * short command:
   * has 4 bytes plus a length byte and data bytes
@@ -60,7 +63,7 @@ In LANDSCAPE orientation:
   * normally, long command writes 32 bytes (0x20), then if right side of chip needs to be accessed, short command is also called
     * writes next 32 bytes (short command must be called immediately after long command writes byte 31, due to relative positioning being the only way to access the right side of the chip aka odd zone)
     * therefore, accessing a block in an odd zone always requires first filling the even zone (for example, filling zone 1 block 3 requires filling zone 0 block 3 using long command with 32 bytes then calling short command to fill zone 1 block 3, where zone 1 and block 3 are implied by relative positioning, also with 32 bytes)
-* pypicolcd stores blocks separately so they can be sent to the graphics chip without slicing the list
+* pypicolcd stores blocks separately (in picolcd.framebuffers list) so they can be sent to the graphics chip without slicing the buffer (only one framebuffer is created for text type devices)
 
 
 ## Authors
