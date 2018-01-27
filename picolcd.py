@@ -220,9 +220,13 @@ class PicoLcd:
                 self.framebuffer[1] = 0
                 self.framebuffers.append(self.framebuffer)
 
-    def shrunken_rect(self, outline, offset=1):
+    def smaller_rect(self, outline, offset=1):
         return ((outline[0][0]+offset, outline[0][1]+offset),
                 (outline[1][0]-offset, outline[1][1]-offset))
+
+    def larger_rect(self, outline, offset=1):
+        return ((outline[0][0]-offset, outline[0][1]-offset),
+                (outline[1][0]+offset, outline[1][1]+offset))
 
     # row,col: the y,x location (in that order; though if
     #   picolcd.dc["type"] is graphics, it will be a pixel location
