@@ -32,9 +32,10 @@ except ImportError:
 import time
 import sys
 import traceback
+import os
+import random
 
-
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 #from PIL import Image, ImageDraw, ImageFont, ImageColor
 
 def view_traceback(indent=""):
@@ -212,23 +213,66 @@ class PicoLcd:
 
 
     # row,col: the y,x location (in that order; though if
-    # picolcd.dc["type"] is graphics, it will be a pixel location
-    # where row is the middle of the letters)
-    def draw_text(self, row, col, text, font=None):
+    #  picolcd.dc["type"] is graphics, it will be a pixel location
+    #  where row is the middle of the letters)
+    # font_path & font_size: only available for devices where
+    #  picolcd.dc["type"] is "graphics"--font_path can only be ttf
+    #  for now.
+    # threshold: must be this opaque or higher--fine tuning may improve
+    #  readability for certain fonts at small sizes (higher values make
+    #  font slightly thinner)
+    def draw_text(self, row, col, text, font_path=None, font_size=None,
+                  threshold=.5):
         if self.dc["type"] == "graphics":
-            start_y = row
-            start_x = col
+            pos = (col, row)  # column is x, row is y
             on_count = 0
-            # TODO: draw text to PIL Image
-            # for y in range(self.dc["height"]):
-                # for x in range(start_x, self.dc["width"]):
-            if on_count < 1:
-                print("[ PicoLcd ] WARNING in draw_text: offscreen"
-                      + " buffer had " + str(on_count)
-                      + " text pixels")
-
-            self.refresh()
-            return 0
+            is_ok = True
+            if font_size is None:
+                font_size = 8
+            if font_path is None:
+                font_path = 'fonts/ninepin.ttf'
+                if self.verbose_enable:
+                    print("[ PicoLcd ] (verbose message in draw_text)"
+                          + " reverted to default font '"
+                          + font_path + "'")
+                if not os.path.isfile(font_path):
+                    print("[ PicoLcd ] ERROR in draw_text:"
+                          + " missing default font '"
+                          + font_path + "'")
+                    is_ok = False
+            elif not os.path.isfile(font_path):
+                try_path = os.path.join("fonts", font_path)
+                if os.path.isfile(try_path):
+                    font_path = try_path
+                else:
+                    print("[ PicoLcd ] ERROR in draw_text:"
+                          " font '" + font_path + "' not found.")
+                    is_ok = False
+            if is_ok:
+                size = self.dc["width"], self.dc["height"]
+                im = Image.new('RGBA', size, (255,255,255,0))
+                # fnt = ImageFont.truetype(font_path, 40)
+                fnt = ImageFont.truetype(font_path, font_size)
+                # drawing context:
+                d = ImageDraw.Draw(im)
+                d.text(pos, text, font=fnt, fill=(255,255,255,255))
+                for src_y in range(size[1]):
+                    for src_x in range(size[0]):
+                        dest_x, dest_y = src_x, src_y
+                        r, g, b, a = im.getpixel((src_x, src_y))
+                        alpha = float(a) / 255.
+                        if alpha >= threshold:
+                            on_count += 1  # for debugging only
+                            self.set_pixel(dest_x, dest_y, True,
+                                           refresh_enable=False)
+                # TODO: draw text to PIL Image
+                # for y in range(self.dc["height"]):
+                    # for x in range(start_x, self.dc["width"]):
+                if on_count < 1:
+                    print("[ PicoLcd ] WARNING in draw_text: offscreen"
+                          + " buffer had " + str(on_count)
+                          + " text pixels")
+                self.refresh()
         else:
             addr = {0: 0x80, 1: 0xc0, 2:0x94, 3:0xd4}[row] + col
             result = self.wr(bytes(0x94, 0x00, 0x01, 0x00, 0x64, addr))
@@ -240,7 +284,14 @@ class PicoLcd:
 
     # draw image to lcd (bigger than screen or negative pos is ok)
     # pos: (x,y) coords for where to place left top corner of image
-    def draw_image(self, pos, path):
+    # threshold: lightness (r+g+b/765) must be threshold or higher,
+    #   to be white (not set) otherwise is black (on)
+    #   if left at default, dithering will be used instead
+    # brightness: multiplier for dithering, so only applies if
+    #   threshold=None
+    def draw_image(self, pos, path, threshold=None, invert_enable=False,
+                   brightness=1.0):
+        brightness *= 2
         try:
             im = Image.open(path)
             rgb_im = im.convert('RGB')
@@ -248,6 +299,7 @@ class PicoLcd:
             dst_w = self.dc["width"]
             dst_h = self.dc["height"]
             src_y = 0
+            errors = []
 
             while src_y < height:
                 dst_y = src_y + pos[1]
@@ -258,11 +310,38 @@ class PicoLcd:
                             dst_x = src_x + pos[0]
                             if dst_x >= 0:
                                 if dst_x < dst_w:
-                                    r, g, b = rgb_im.getpixel((src_x, src_y))
-                                    val = round(float(r + g + b) / 765.)
-                                    on = val >= .5
-                                    self.set_pixel(dst_x, dst_y, on,
-                                                   refresh_enable=False)
+                                    r, g, b = rgb_im.getpixel(
+                                        (src_x, src_y))
+                                    if threshold is not None:
+                                        val = float(r + g + b) / 765.
+                                        # on = val >= threshold
+                                        if val >= threshold:
+                                            self.set_pixel(
+                                                dst_x, dst_y,
+                                                invert_enable,
+                                                refresh_enable=False)
+                                        else:
+                                            self.set_pixel(
+                                                dst_x, dst_y,
+                                                not invert_enable,
+                                                refresh_enable=False)
+                                    else:
+                                        total = r + g + b
+                                        threshold_i = 382  # 765 / 2
+                                        ri = 0
+                                        if total > 0:
+                                            ri = random.randrange(total)
+                                            ri *= brightness
+                                        # on is dark (blocks backlight)
+                                        # if not desired,
+                                        # use invert_enable
+                                        on = ri <= threshold_i
+                                        if invert_enable:
+                                            on = not on
+                                        self.set_pixel(
+                                            dst_x, dst_y,
+                                            on,
+                                            refresh_enable=False)
                                     src_x += 1
                                 else:
                                     break
@@ -372,7 +451,11 @@ class PicoLcd:
         # NOTE: one byte covers 8 pixels on y axis from landscape view
         if force_refresh_enable:
             refresh_enable=True
-        zone_width = self.dc["width"] / self.dc["zones"]
+        dst_w = self.dc["width"]
+        dst_h = self.dc["height"]
+        if x < 0 or y < 0 or x > dst_w or y > dst_h:
+            return 0
+        zone_width = dst_w / self.dc["zones"]
         zone_i = int(x/zone_width)
         block_i = int(y/self.dc["blockrows"])
         bs = self.dc["block_size"]
@@ -440,7 +523,11 @@ if __name__ == "__main__":
     p = PicoLcd()
     p.clear()
     p.draw_text(0, 0, "It worked!")
-    p.draw_text(3, 0, datetime.now().ctime()[:20])
+    y = 3
+    pixel_y = round(p.dc["height"] / 2)
+    if pixel_y > y:
+        y = pixel_y
+    p.draw_text(y, 0, datetime.now().ctime()[:20])
     print("You can use this module like:")
     print("  from picolcd import PicoLcd")
     print("  p = PicoLcd()")

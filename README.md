@@ -4,16 +4,19 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 
 ## Main Features
 * Draw without driver
-* Draw without dependencies other than pyusb (`sudo python3 -m pip install pyusb`)
-* This is primarily for picoLCD 256x64 (graphics only) but may work with picoLCD 20x4 (text only)
+* Fast: refresh only refreshes zones invalidated--even faster if you do `picolcd.set_pixel(x, y, True, refresh_enable=False)` then call `picolcd.refresh()` after all `set_pixel` calls are done (`draw_text` does this automatically)
+* Draw without dependencies other than pyusb (`sudo python3 -m pip install pyusb`) and PIL (`sudo python3 -m pip install Pillow` or `sudo python -m pip install Pillow` or on arch, `pacman -Syu python-pillow`)
+* Fault-tolerant: draw text or image beyond range of screen, and automatically gets cropped (negative pos is allowed, which can be used for sprite animations if 64x64 cells in column or 256x64 cells in any layout)
 
 ## Planned Features
-* Text
+* more accurate image dithering
 
 ## Changes
 (2018-01-26)
 * make example.py
 * (fix use of refresh_enable) make force_refresh_enable=True work where on=False
+* draw text
+* draw image with font or dithering
 
 ## Developer Notes
 
@@ -45,5 +48,10 @@ In LANDSCAPE orientation:
 
 
 ## Authors
-* expertmm <https://github.com/expertmm> code and resources (resources such as images are CC0 -- see "license for pypicolcd resources.txt")
+* resources from external sources:
+  * Ninepin font: by Digital Graphics Labs on <http://www.1001fonts.com/ninepin-font.html> LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification NOT allowed, Redistribution allowed, freeware license in "fonts/ninepin/!license.txt"
+  * Press Start font family (prstart.ttf, prstartk.ttf): by codeman38 on <http://www.1001fonts.com/press-start-font.html> LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, custom license "fonts/press-start/license.txt"
+    * naturally 8px high including descenders
+  * flottflott font: by Peter Wiegel on <http://www.1001fonts.com/flottflott-font.html>  LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, SIL Open Font License (OFL) -- see "fonts/flottflott/Open Font License.txt" and "fonts/flottflott/OFL-FAQ.txt"
+* expertmm <https://github.com/expertmm> code and resources not mentioned above: resources created by expertmm are CC0 -- see "images/CC0.txt")
 * sphinx on excamera.com: http://excamera.com/sphinx/article-picolcd.html (61-line version of code that works with text model picoLCD 20x4 only)

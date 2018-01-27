@@ -196,7 +196,7 @@ def render_text_click():
 
 render_text_btn = tk.Button(
     root,
-    text="Render This Text\n(NOT YET IMPLEMENTED)",
+    text="Render This Text\n(preview is estimate only)",
     command=render_text_click)
 render_text_btn.pack()
 
