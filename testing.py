@@ -1,5 +1,5 @@
 #!/bin/env python3
-# pypicolcd, a module for driverless writing to picoLCD
+# (tests for) pypicolcd, a module for driverless writing to picoLCD
 # Copyright (C) 2018  Jake Gustafson
 
 # This program is free software: you can redistribute it and/or modify

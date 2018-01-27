@@ -1,5 +1,6 @@
+#!/bin/env python3
 from picolcd import PicoLcd
-# pypicolcd, a module for driverless writing to picoLCD
+# (example for) pypicolcd, a module for driverless writing to picoLCD
 # Copyright (C) 2018  Jake Gustafson
 
 # This program is free software: you can redistribute it and/or modify
@@ -27,6 +28,11 @@ p = PicoLcd()
 p.clear()
 p.verbose_enable = True
 p.set_pixel(0, 0, True)
-p.draw_text(0, 16, "Hello World!")
-p.draw_text(0, 48, "Alpha monkey has the banana.")
+x, y = 0, 0
+p.draw_image((x, y), "maze.png")
+# NOTE: draw_text uses row,col format which is y,x order
+x, y = 0, 16
+p.draw_text(y, x, "Hello World!")
+x, y = 0, 48
+p.draw_text(y, x, "Alpha monkey has the banana.")
 

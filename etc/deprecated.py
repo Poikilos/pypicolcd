@@ -1,3 +1,14 @@
+# region formerly from pypycolcd.py
+try:
+    import Tkinter as tk
+    import tkFont
+    import ttk
+except ImportError:  # Python 3
+    import tkinter as tk
+    import tkinter.font as tkFont
+    import tkinter.ttk as ttk
+
+class PicoLcd_DEPRECATED:
     # enable: True is black, as False allows backlight to show through
     # this is very inaccurate, and not changed to match info in README yet
     def _pokepixel(self, x, y, enable, diff_enable=True):
@@ -187,3 +198,71 @@
             print("[ picolcd ] cleared " + str(addr_count)
                   + " block(s)")
             pass
+
+    # row,col: the y,x location (in that order; though if
+    # picolcd.dc["type"] is graphics, it will be a pixel location
+    # where row is the middle of the letters)
+    def draw_text(self, row, col, text, font=None):
+        if self.dc["type"] == "graphics":
+            start_y = row
+            start_x = col
+
+            # print("[ picolcd ] ERROR in draw_text:"
+                  # " bitmap font, required for draw_text in "
+                  # " graphics model type, is not yet implemented")
+            root0 = tk.Tk()  # never shown, just for font rendering
+            canvas = tk.Canvas(root0, width=self.dc["width"],
+                               height=self.dc["height"])
+            canvas.pack()
+            bg_id = canvas.create_rectangle(0, 0, self.dc["width"],
+                                            self.dc["height"],
+                                            fill="WHITE")
+            text_id = None
+            black_count = 0
+            unknowns = []
+            if font is not None:
+                text_id = canvas.create_text(
+                    start_x, start_y, anchor=tk.W,
+                    fill="BLACK", # fill="#000"
+                    text=text,
+                    font=font)
+            else:
+                text_id = canvas.create_text(
+                    start_x, start_y, anchor=tk.W,
+                    fill="BLACK",
+                    text=text)
+            on_count = 0
+            # pixels = get_pixels_1d_of(canvas)
+            # for p_i in range(len(pixels)):
+                # pixel = pixels[p_i]
+                # if pixel == "BLACK":
+                    # y = int(p_i / self.dc["width"])
+                    # x = int(p_i % self.dc["width"])
+                    # self.set_pixel(x, y, True, refresh_enable=False)
+                # elif pixel == "WHITE":
+                    # pass
+                # else:
+                    # if pixel not in unknowns:
+                        # unknowns.append(pixel)
+            rows = get_pixels_2d_of(canvas)
+            y = 0
+            for row in rows:
+                x = 0
+                for pixel in row:
+                    if pixel == "BLACK":
+                        on_count += 1
+                        self.set_pixel(x, y, True, refresh_enable=False)
+                    elif pixel == "WHITE":
+                        pass
+                    else:
+                        if pixel not in unknowns:
+                            unknowns.append(pixel)
+                    x += 1
+                y += 1
+
+            if len(unknowns) > 0:
+                print("[ PicoLcd ] WARNING in draw_text: offscreen"
+                      " surface had unknown pixels: "
+                      + str(unknowns))
+
+# endregion formerly from pypycolcd.py

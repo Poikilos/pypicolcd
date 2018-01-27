@@ -1,4 +1,5 @@
 # pypicolcd
+<https://github.com/expertmm/pypicolcd>
 Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLcd class.
 
 ## Main Features
@@ -44,4 +45,5 @@ In LANDSCAPE orientation:
 
 
 ## Authors
+* expertmm <https://github.com/expertmm> code and resources (resources such as images are CC0 -- see "license for pypicolcd resources.txt")
 * sphinx on excamera.com: http://excamera.com/sphinx/article-picolcd.html (61-line version of code that works with text model picoLCD 20x4 only)

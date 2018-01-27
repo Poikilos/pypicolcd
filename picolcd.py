@@ -30,18 +30,19 @@ except ImportError:
     print("  sudo pip install pyusb")
 
 import time
+import sys
+import traceback
 
-try:
-    import Tkinter as tk
-    import tkFont
-    import ttk
-except ImportError:  # Python 3
-    import tkinter as tk
-    import tkinter.font as tkFont
-    import tkinter.ttk as ttk
 
-# TODO: root = tk.Tk()  # never shown, just for font rendering
+from PIL import Image
+#from PIL import Image, ImageDraw, ImageFont, ImageColor
 
+def view_traceback(indent=""):
+    ex_type, ex, tb = sys.exc_info()
+    print(indent + str(ex_type) + " " + str(ex) + ": ")
+    traceback.print_tb(tb)
+    del tb
+    print("")
 
 def bytes(*b):
     return "".join([chr(x) for x in b])
@@ -217,65 +218,13 @@ class PicoLcd:
         if self.dc["type"] == "graphics":
             start_y = row
             start_x = col
-            # print("[ picolcd ] ERROR in draw_text:"
-                  # " bitmap font, required for draw_text in "
-                  # " graphics model type, is not yet implemented")
-            canvas = tk.Canvas(width=self.dc["width"], height=self.dc["height"])
-            bg_id = canvas.create_rectangle(0, 0, self.dc["width"],
-                                            self.dc["height"],
-                                            fill="WHITE")
-            text_id = None
-            black_count = 0
-            unknowns = []
-            if font is not None:
-                text_id = canvas.create_text(
-                    start_x, start_y, anchor=tk.W,
-                    fill="BLACK", # fill="#000"
-                    text=text,
-                    font=font)
-            else:
-                text_id = canvas.create_text(
-                    start_x, start_y, anchor=tk.W,
-                    fill="BLACK",
-                    text=text)
             on_count = 0
-            # pixels = get_pixels_1d_of(canvas)
-            # for p_i in range(len(pixels)):
-                # pixel = pixels[p_i]
-                # if pixel == "BLACK":
-                    # y = int(p_i / self.dc["width"])
-                    # x = int(p_i % self.dc["width"])
-                    # self.set_pixel(x, y, True, refresh_enable=False)
-                # elif pixel == "WHITE":
-                    # pass
-                # else:
-                    # if pixel not in unknowns:
-                        # unknowns.append(pixel)
-            rows = get_pixels_2d_of(canvas)
-            y = 0
-            for row in rows:
-                x = 0
-                for pixel in row:
-                    if pixel == "BLACK":
-                        on_count += 1
-                        self.set_pixel(x, y, True, refresh_enable=False)
-                    elif pixel == "WHITE":
-                        pass
-                    else:
-                        if pixel not in unknowns:
-                            unknowns.append(pixel)
-                    x += 1
-                y += 1
-
-            if len(unknowns) > 0:
-                print("[ PicoLcd ] WARNING in draw_text: offscreen"
-                      " surface had unknown pixels: "
-                      + str(unknowns))
+            # TODO: draw text to PIL Image
             # for y in range(self.dc["height"]):
                 # for x in range(start_x, self.dc["width"]):
             if on_count < 1:
                 print("[ PicoLcd ] WARNING in draw_text: offscreen"
-                      + " buffer had only " + str(on_count)
+                      + " buffer had " + str(on_count)
                       + " text pixels")
 
             self.refresh()
@@ -288,6 +237,46 @@ class PicoLcd:
                       + "byte(s) written for address")
             self.wr(bytes(OUT_REPORT_DATA, 0x01, 0x00, 0x01, len(text))
                     + text)
+
+    # draw image to lcd (bigger than screen or negative pos is ok)
+    # pos: (x,y) coords for where to place left top corner of image
+    def draw_image(self, pos, path):
+        try:
+            im = Image.open(path)
+            rgb_im = im.convert('RGB')
+            width, height = im.size
+            dst_w = self.dc["width"]
+            dst_h = self.dc["height"]
+            src_y = 0
+
+            while src_y < height:
+                dst_y = src_y + pos[1]
+                if dst_y >= 0:
+                    if dst_y < dst_h:
+                        src_x = 0
+                        while src_x < width:
+                            dst_x = src_x + pos[0]
+                            if dst_x >= 0:
+                                if dst_x < dst_w:
+                                    r, g, b = rgb_im.getpixel((src_x, src_y))
+                                    val = round(float(r + g + b) / 765.)
+                                    on = val >= .5
+                                    self.set_pixel(dst_x, dst_y, on,
+                                                   refresh_enable=False)
+                                    src_x += 1
+                                else:
+                                    break
+                            else:
+                                src_x += -dst_x
+                        src_y += 1
+                    else:
+                        break
+                else:
+                    src_y += -dst_y
+            self.refresh()
+        except:
+            print("[ PicoLcd ] ERROR--could not finish loading image:")
+            view_traceback()
 
     # invalidate rectangle of lcd to force refresh to refresh them
     # next time refresh is called (if no params, then entire screen:
