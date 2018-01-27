@@ -2,7 +2,7 @@
 <https://github.com/expertmm/pypicolcd>
 
 Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLcd class.
-
+![kitten](https://github.com/expertmm/pypicolcd/raw/master/screenshot.jpg)
 
 ## Main Features
 * Easy: see <https://github.com/expertmm/pypicolcd/blob/master/example.py>
