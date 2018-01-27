@@ -33,8 +33,8 @@ x, y = 0, 0
 # p.draw_image((x, y), "images/maze.png")
 # p.draw_image((x, y), "images/qbist.png", brightness=20)
 # p.draw_image((x, y), "images/gradient-vertical.png", threshold=float(30./255.))
-p.draw_image((x, y), "images/gradient-vertical.png", brightness=10)
-#p.draw_image((x, y), "images/checker-gradient.png", brightness=1)
+# p.draw_image((x, y), "images/gradient-vertical.png", brightness=1)
+p.draw_image((x, y), "images/checker-gradient.png", brightness=1)
 # NOTE: draw_text uses row,col format which is y,x order
 x, y = 0, 0
 p.draw_text(

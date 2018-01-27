@@ -35,6 +35,7 @@ except ImportError:
     print("such as via:")
     print("  sudo pip install pyusb")
     # only catch ImportError, so exceptions in picolcd will be shown
+
 try:
     import Tkinter as tk
     import tkFont
@@ -43,11 +44,11 @@ except ImportError:  # Python 3
     import tkinter as tk
     import tkinter.font as tkFont
     import tkinter.ttk as ttk
+
 p = None
 cmd_len = None
 data_len = 0x01
 pixel = 0xFF
-
 blank_cmd = [
     0x00,
     0x00,
@@ -79,7 +80,6 @@ cmd3 = [
     data_len,
     pixel
 ]
-
 # clears bottom (landscape right) of each chip (each chip is 64x64 pixels)
 cmd4 = [
     OUT_REPORT_DATA,
@@ -90,7 +90,9 @@ cmd4 = [
     pixel
 ]
 canvas = None
-def set_canvas_pixel(x, y):
+
+def set_canvas_pixel(pos):
+    x, y = pos
     canvas.create_line(x, y, x+1, y, fill="#000")
 
 def quit():
@@ -101,7 +103,7 @@ def fill():
     for y in range(p.dc["height"]):
         for x in range(p.dc["width"]):
             # if x < y:
-            set_canvas_pixel(x, y)
+            set_canvas_pixel((x, y))
             p.set_pixel((x, y), True)
             # else:
                 # p.set_pixel((x, y), False)
@@ -112,7 +114,7 @@ def draw_pattern():
         # x = 32
         # if True:
         for x in range(128):
-            set_canvas_pixel(x, y)
+            set_canvas_pixel((x, y))
             p.set_pixel((x, y), True)
 
 def draw_southwest_arrow():
@@ -120,7 +122,7 @@ def draw_southwest_arrow():
         for x in range(64):
             refresh_enable = False
             if x < y:
-                set_canvas_pixel(x, y)
+                set_canvas_pixel((x, y))
                 p.set_pixel((x, y), True, refresh_enable=refresh_enable)
             # else:
                 # p.set_pixel((x, y), False)
@@ -136,8 +138,8 @@ def getorigin(eventorigin):
     x0 = eventorigin.x
     y0 = eventorigin.y
     if draw_enable:
-        set_canvas_pixel(x0, y0)
-        p.set_pixel(x0, y0, True)
+        set_canvas_pixel((x0, y0))
+        p.set_pixel((x0, y0), True)
         # p.set_pixel((x0, y0), True)
         # p.set_pixel((x0, y0), True)
         count += 1
@@ -150,6 +152,9 @@ p.verbose_enable = True
 print("Generating form")
 
 root = tk.Tk()
+# relief='sunken', borderwidth=2, bg='white', width=256, height=500
+# fill='y'
+
 # canvas = tk.Frame(root, width=p.dc["width"], height=p.dc["height"])
     # bd=0
 # canvas.pack(expand=1, fill=tk.BOTH)
@@ -163,53 +168,193 @@ canvas.create_rectangle(0, 0, p.dc["width"], p.dc["height"],
 root.wm_title("picolcd testing by expertmm")
 root.bind("<Button 1>", getorigin)
 
+l_frame = tk.Frame(root)
+l_frame.pack(expand=True, fill='both', side='left', anchor='nw')
+r_frame = tk.Frame(root)
+r_frame.pack(expand=True, fill='both', side='right')
+this_root = l_frame
+
+def clear_click(clear_source_enable=True):
+    if clear_source_enable:
+        p.clear()
+    canvas.delete("all")
+    canvas.create_rectangle(
+        0, 0, p.dc["width"], p.dc["height"],
+        outline="#fff", fill="#fff")
+
+clear_btn = tk.Button(this_root, text="Clear LCD",
+                      command=clear_click)
+clear_btn.pack(fill='x')
+
+this_root = r_frame
+
+draw_enable_btn = None
+draw_enable_svar = tk.StringVar()
+draw_enable_svar.set("Enable Drawing (above)")
 def enable_draw_click():
     global draw_enable
-    draw_enable = True
+    global draw_enable_svar
+    draw_enable_s = draw_enable_svar.get()
+    if "Enable" in draw_enable_s:
+        draw_enable = True
+        draw_enable_s = "Disable" + draw_enable_s[6:]
+    else:
+        draw_enable = False
+        draw_enable_s = "Enable" + draw_enable_s[7:]
+    draw_enable_svar.set(draw_enable_s)
 
 draw_enable_btn = tk.Button(
-    root,
-    text="Enable Mouse Drawing\n(on blank above)",
+    this_root,
+    textvariable=draw_enable_svar,
     command=enable_draw_click)
-draw_enable_btn.pack()
+draw_enable_btn.pack(fill='x')
 
-text_entry = tk.Entry(root)
-text_entry.pack()
-
+this_root = l_frame
 text_id = None
 
-def render_text_click():
+text_entry = tk.Entry(this_root)
+text_entry.pack()
+text_entry.insert(0, "hello")
+
+threshold = .5
+threshold_enable_ivar = tk.IntVar()
+
+def draw_from_source():
+    clear_click(clear_source_enable=False)
+    src_w = p.dc["width"]
+    src_h = p.dc["height"]
+    for y in range(src_h):
+        for x in range(src_w):
+            if p.get_pixel((x,y)):
+                set_canvas_pixel((x,y))
+
+threshold_entry = None
+image_pos_x_entry = None
+image_pos_y_entry = None
+
+def draw_image_click():
+    global threshold_enable_ivar
+    global threshold_entry
+    this_t = None
+    if image_pos_x_entry.get().strip() == "":
+        image_pos_x_entry.delete(0, tk.END)
+        image_pos_x_entry.insert(0, "0")
+    if image_pos_y_entry.get().strip() == "":
+        image_pos_y_entry.delete(0, tk.END)
+        image_pos_y_entry.insert(0, "0")
+    if threshold_entry.get().strip() == "":
+        threshold_entry.delete(0, tk.END)
+        threshold_entry.insert(0, ".5")
+    x = int(image_pos_x_entry.get().strip())
+    y = int(image_pos_y_entry.get().strip())
+    if threshold_enable_ivar.get() > 0:  # checkbox is 1 or 0 in tkinter
+        this_t = float(threshold_entry.get().strip())
+    p.draw_image((x,y), "images/kitten.jpg", threshold=this_t)
+    # p.draw_image((0,0), "images/kitten.jpg")
+    draw_from_source()
+
+text_pos_x_entry = None
+text_pos_y_entry = None
+text_size_entry = None
+text_erase_bg_enable_i = tk.IntVar()
+def draw_text_click():
     global text_id
+    global text_pos_x_entry
+    global text_pos_y_entry
+    global threshold_entry
+    if threshold_entry.get().strip() == "":
+        threshold_entry.delete(0, tk.END)
+        threshold_entry.insert(0, ".5")
+    this_t = None
+    if threshold_enable_ivar.get() > 0:  # checkbox is 1 or 0 in tkinter
+        this_t = float(threshold_entry.get().strip())
     text = text_entry.get()
     # NOTE: y sets the MIDDLE of the text
-    x = 0
-    y = 16
-    if text_id is None:
-        text_id = canvas.create_text(
-            x, y, anchor=tk.W,
-            fill="#000",
-            text=text)
-            # font="Purisa"
-    else:
-        canvas.itemconfigure(text_id, text=text)
-    p.draw_text(y, x, text, erase_behind_enable=True)
+    if text_pos_x_entry.get().strip() == "":
+        text_pos_x_entry.delete(0, tk.END)
+        text_pos_x_entry.insert(0, "0")
+    if text_pos_y_entry.get().strip() == "":
+        text_pos_y_entry.delete(0, tk.END)
+        text_pos_y_entry.insert(0, "0")
+    x = int(text_pos_x_entry.get().strip())
+    y = int(text_pos_y_entry.get().strip())
+    if text_size_entry.get().strip() == "":
+        text_size_entry.delete(0, tk.END)
+        text_size_entry.insert(0, "8")
+    font_size = int(text_size_entry.get().strip())
+    # if text_id is None:
+        # text_id = canvas.create_text(
+            # x, y, anchor=tk.W,
+            # fill="#000",
+            # text=text)
+            # # font="Purisa"
+    # else:
+        # canvas.itemconfigure(text_id, text=text)
+    p.draw_text(y, x, text, font_size=font_size,
+                erase_behind_enable=(text_erase_bg_enable_i.get()>0),
+                threshold=this_t)
+    draw_from_source()
+
+text_pos_label = tk.Label(this_root, text="Text Position:", justify=tk.LEFT)
+text_pos_label.pack(anchor=tk.W)
+text_pos_x_entry = tk.Entry(this_root)
+text_pos_x_entry.pack()
+text_pos_x_entry.insert(0, "1")
+text_pos_y_entry = tk.Entry(this_root)
+text_pos_y_entry.pack()
+text_pos_y_entry.insert(0, "32")
+
+text_size_label = tk.Label(this_root, text="Text Size (pt):", justify=tk.LEFT)
+text_size_label.pack(anchor=tk.W)
+text_size_entry = tk.Entry(this_root)
+text_size_entry.pack()
+text_size_entry.insert(0, "8")
+
+text_erase_bg_cb = tk.Checkbutton(this_root, text="Erase Behind Text",
+                                  variable=text_erase_bg_enable_i)
+text_erase_bg_cb.pack(anchor=tk.W)
+
 
 render_text_btn = tk.Button(
-    root,
-    text="Render This Text\n(preview is estimate only)",
-    command=render_text_click)
-render_text_btn.pack()
+    this_root,
+    text="Render This Text",
+    command=draw_text_click)
+render_text_btn.pack(fill='x')
+
+
+image_pos_label = tk.Label(this_root, text="Image Position:", justify=tk.LEFT)
+image_pos_label.pack(anchor=tk.W)
+image_pos_x_entry = tk.Entry(this_root)
+image_pos_x_entry.pack()
+image_pos_x_entry.insert(0, "-64")
+image_pos_y_entry = tk.Entry(this_root)
+image_pos_y_entry.pack()
+image_pos_y_entry.insert(0, "-64")
+
+threshold_cb = tk.Checkbutton(this_root, text="Threshold",
+                              variable=threshold_enable_ivar)
+threshold_cb.pack(anchor=tk.W)
+threshold_entry = tk.Entry(this_root, text=str(threshold))
+threshold_entry.insert(0, ".5")
+threshold_entry.pack()
+
+draw_image_btn = tk.Button(
+    this_root,
+    text="Render Image",
+    command=draw_image_click)
+draw_image_btn.pack(fill='x')
 
 draw_arrow_btn = tk.Button(
-    root,
+    this_root,
     text="Draw arrow SW",
     command=draw_southwest_arrow)
-draw_arrow_btn.pack()
+draw_arrow_btn.pack(fill='x')
 
+this_root = r_frame
 max_byte_count = 13  # usually a command is 6 or 13 bytes
 entries = []
 for i in range(max_byte_count):
-    e = tk.Entry(root)
+    e = tk.Entry(this_root)
     e.pack()
     entries.append(e)
 
@@ -278,23 +423,16 @@ def run_click():
         print("ERROR in run_cmd_click: cmd_len is not known."
               " Load an example first.")
 
-def clear_click():
-    p.clear()
-    canvas.create_rectangle(0, 0, p.dc["width"], p.dc["height"],
-    outline="#fff", fill="#fff")
 
-run_btn = tk.Button(root, text="Send 0 Bytes",
+run_btn = tk.Button(this_root, text="Send 0 Bytes",
                       command=run_click)
-run_btn.pack()
-load_short_btn = tk.Button(root, text="Load 6-byte cmd",
+run_btn.pack(fill='x')
+load_short_btn = tk.Button(this_root, text="Load 6-byte cmd",
                            command=load_short_btn_click)
-load_short_btn.pack()
-load_long_btn = tk.Button(root, text="Load 13-byte cmd",
+load_short_btn.pack(fill='x')
+load_long_btn = tk.Button(this_root, text="Load 13-byte cmd",
                           command=load_long_btn_click)
-load_long_btn.pack()
-clear_btn = tk.Button(root, text="Clear LCD",
-                      command=clear_click)
-clear_btn.pack()
+load_long_btn.pack(fill='x')
 #main.mainloop()
 #tk.mainloop()
 

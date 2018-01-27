@@ -10,10 +10,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 * Fast: refresh only refreshes zones invalidated--even faster if you do `picolcd.set_pixel(x, y, True, refresh_enable=False)` then call `picolcd.refresh()` after all `set_pixel` calls are done (`draw_text` does this automatically)
 * Draw without dependencies other than pyusb (`sudo python3 -m pip install pyusb`) and PIL (`sudo python3 -m pip install Pillow` or `sudo python -m pip install Pillow` or on arch, `pacman -Syu python-pillow`)
 * Fault-tolerant: draw text or image beyond range of screen, and automatically gets cropped (negative pos is allowed, which can be used for sprite animations if 64x64 cells in column or 256x64 cells in any layout)
-
-
-## Planned Features
-* more accurate image dithering
+* Image Dithering (draw color image, and will automatically be dithered to 1-bit by luminosity)
 
 
 ## Changes
@@ -25,18 +22,20 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 
 
 ## Known Issues
-* erase_behind_enable option will not erase beyond actual drawn rect (such as, overwriting "111" with "---" will still show the top and bottom of the 1s
+* does not read state of buttons on the unit
+
 
 ## Developer Notes
 * To get font rect (for graphics type devices only), try something like
 ```python
-minimums, maximums = picolcd.draw_text(
+last_rect = picolcd.draw_text(
     y, x, "|-------|",  # row,col format is in y,x order even though
                         # is pixel location if graphics type device
     erase_behind_enable=True, refresh_enable=False)
 ```
   then clear the LCD, or just store the numbers to a file or your code so the process doesn't need to be repeated on each run.
-  (result will be minimums tuple containing x,y coordinates, and exclusive maximums in same format)
+  Result will be a rect in format ((min_x, min_y), (max_x+1, max_y+1)) which can be later passed like `draw_text(y, x, "...", erase_rect=last_rect)`
+* erase_behind_enable option will not erase beyond actual drawn rect (such as, overwriting "111" with "---" will still show the top and bottom of the 1s unless you pass erase_rect param (see above)
 * contents of DC_DICT (and hence of picolcd.dc) should never be changed--they are device characteristics that define how the device operates at the lowest accessible level. If there is a different device not supported, the device should be added as a new entry in the DC_DICT, where the key is its USB device id.
 
 ### What is testing.py
@@ -72,5 +71,6 @@ In LANDSCAPE orientation:
   * Press Start font family (prstart.ttf, prstartk.ttf): by codeman38 on <http://www.1001fonts.com/press-start-font.html> LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, custom license "fonts/press-start/license.txt"
     * naturally 8px high including descenders
   * flottflott font: by Peter Wiegel on <http://www.1001fonts.com/flottflott-font.html>  LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, SIL Open Font License (OFL) -- see "fonts/flottflott/Open Font License.txt" and "fonts/flottflott/OFL-FAQ.txt"
+* ilyessuti on pixnio: CC0 licensed kitten*.jpg (2017-12-21-14-52-48) <https://pixnio.com/fauna-animals/cats-and-kittens/field-grass-cute-summer-nature-cat-outdoor-flower>, retouch expertmm
 * expertmm <https://github.com/expertmm> code and resources not mentioned above: resources created by expertmm are CC0 -- see "images/CC0.txt")
 * sphinx on excamera.com: http://excamera.com/sphinx/article-picolcd.html (61-line version of code that works with text model picoLCD 20x4 only)

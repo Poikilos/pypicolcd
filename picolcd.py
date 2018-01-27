@@ -90,6 +90,9 @@ this_dc["chip_count"] = 4
 DC_DICT[0xc002] = this_dc
 
 def get_pixel_color(canvas, x, y):
+    # this function is useless, since doesn't work for anything but
+    # rects, which we already know are there (just gets black rectangle
+    # for text)
     ids = canvas.find_overlapping(x, y, x, y)
     if len(ids) > 0:
         index = ids[-1]  # -1 gets top (last) graphics instruction
@@ -101,26 +104,6 @@ def get_pixel_color(canvas, x, y):
         print("[ picolcd.py ] WARNING in get_pixel_color: no color"
               " at " + str((x, y)))
     return "WHITE"
-
-def get_pixels_2d_of(canvas):
-    width = int(canvas["width"])
-    height = int(canvas["height"])
-    colors = []
-    for y in range(height):
-        row = []
-        for x in range(width):
-            row.append(get_pixel_color(canvas, x, y))
-        colors.append(row)
-    return colors
-
-def get_pixels_1d_of(canvas):
-    width = int(canvas["width"])
-    height = int(canvas["height"])
-    colors = []
-    for y in range(height):
-        for x in range(width):
-            colors.append(get_pixel_color(canvas, x, y))
-    return colors
 
 
 class PicoLcd:
@@ -249,7 +232,8 @@ class PicoLcd:
     #   for now.
     # threshold: must be this opaque or higher--fine tuning may improve
     #   readability for certain fonts at small sizes (higher values make
-    #   font slightly thinner)
+    #   font slightly thinner). If None, .5 will be used (.02 if default
+    #   font with font size > 8, to catch edges of squares)
     # refresh_enable: whether to write the invalidated area from the
     #   framebuffers to the device (however, for text type devices,
     #   this is ignored and data is always written)
@@ -266,7 +250,7 @@ class PicoLcd:
     #   have to repeat those calls for each run--it is also not repeated
     #   inside of this function if you pass an erase_rect)
     def draw_text(self, row, col, text, font_path=None, font_size=None,
-                  threshold=.5, erase_behind_enable=False,
+                  threshold=None, erase_behind_enable=False,
                   refresh_enable=True, erase_rect=None):
         results = None, None
         if erase_rect is not None:
@@ -277,6 +261,19 @@ class PicoLcd:
             is_ok = True
             if font_size is None:
                 font_size = self.default_font_size
+            if threshold is None:
+                threshold = .5
+                for_msg = ""
+                if font_path is None and font_size > 8:
+                    threshold = .02
+                    for_msg = (" (adjusted from .5 to acommodate edges"
+                               " of blocks in ninepin font)")
+                if self.verbose_enable:
+                    print("[ PicoLcd ] (verbose message in draw_text)"
+                          + "threshold was None so reverted to default"
+                          + for_msg + ": "
+                          + str(threshold))
+
             if font_path is None:
                 font_path = 'fonts/ninepin.ttf'
                 if self.verbose_enable:
@@ -417,15 +414,13 @@ class PicoLcd:
                                                 refresh_enable=False)
                                     else:
                                         total = r + g + b
-                                        threshold_i = 382  # 765 / 2
-                                        ri = 0
-                                        if total > 0:
-                                            ri = random.randrange(total)
-                                            ri *= brightness
+                                        # threshold_i = 382  # 765 / 2
+                                        ri = random.randrange(765)
                                         # on is dark (blocks backlight)
                                         # if not desired,
                                         # use invert_enable
-                                        on = ri <= threshold_i
+                                        # on = ri <= threshold_i
+                                        on = total * brightness < ri
                                         if invert_enable:
                                             on = not on
                                         self.set_pixel(
@@ -529,6 +524,29 @@ class PicoLcd:
             cmd3.extend(fb)
             result += self.wr(cmd3)
 
+    # returns: True or False
+    def get_pixel(self, pos):
+        x, y = pos
+        dst_w = self.dc["width"]
+        dst_h = self.dc["height"]
+        # if x < 0 or y < 0 or x > dst_w or y > dst_h:
+            # return False
+        zone_width = dst_w / self.dc["zones"]
+        zone_i = int(x/zone_width)
+        block_i = int(y/self.dc["blockrows"])
+        fb_i = block_i * self.dc["zones"] + zone_i
+        bit_i = y % self.dc["ppb"]
+        byte_i = x % self.dc["block_size"]
+        pixel = 1 << bit_i
+        if (fb_i < 0) or (fb_i >= len(self.framebuffers)):
+            print("[ PicoLcd ] ERROR in get_pixel: buffer "
+                  + str(fb_i) + " does not exist in "
+                  + str(len(self.framebuffers)) + "-len buffer list.")
+            return False
+        framebuffer = self.framebuffers[fb_i]
+        result = framebuffer[byte_i]
+        return (result & pixel) > 0
+
     # Set a one-bit pixel to the value of on (invalidate block if
     #   pixel differs from framebuffer or force_refresh_enable is True).
     # on: determines whether to turn the pixel on or off
@@ -545,12 +563,11 @@ class PicoLcd:
             refresh_enable=True
         dst_w = self.dc["width"]
         dst_h = self.dc["height"]
-        if x < 0 or y < 0 or x > dst_w or y > dst_h:
-            return 0
+        # if x < 0 or y < 0 or x > dst_w or y > dst_h:
+            # return 0
         zone_width = dst_w / self.dc["zones"]
         zone_i = int(x/zone_width)
         block_i = int(y/self.dc["blockrows"])
-        bs = self.dc["block_size"]
         fb_i = block_i * self.dc["zones"] + zone_i
         bit_i = y % self.dc["ppb"]
         byte_i = x % self.dc["block_size"]
@@ -561,38 +578,38 @@ class PicoLcd:
                   # + " framebuffer[" + str((fb_i)) + "]"
                   # + " zone,block=" + str((zone_i, block_i))
                   # + " byte=" + str(byte_i) + " bit=" + str(bit_i))
-        if fb_i < len(self.framebuffers):
-            framebuffer = self.framebuffers[fb_i]
-            result = framebuffer[byte_i]
-            # TODO: account for "inverted" mode
-            if on:
-                if result | pixel != result:
-                    framebuffer[byte_i] |= pixel
-                    self.change_enables[fb_i] = True
-                else:
-                    if not force_refresh_enable:
-                        refresh_enable = False
-                    else:
-                        self.change_enables[fb_i] = True
-            else:
-                if result & pixel > 0:
-                    framebuffer[byte_i] ^= pixel
-                    self.change_enables[fb_i] = True
-                else:
-                    if not force_refresh_enable:
-                        refresh_enable = False
-                    else:
-                        self.change_enables[fb_i] = True
-            if refresh_enable:
-                # msg = "refreshing"
-                # if not self.change_enables[fb_i]:
-                    # msg = "not refreshing"
-                # print(msg + " " + str((zone_i, block_i)))
-                self.refresh_block(zone_i, block_i)
-        else:
+        if (fb_i < 0) or (fb_i >= len(self.framebuffers)):
             print("[ PicoLcd ] ERROR in set_pixel: buffer "
                   + str(fb_i) + " does not exist in "
                   + str(len(self.framebuffers)) + "-len buffer list.")
+            return 0
+        framebuffer = self.framebuffers[fb_i]
+        result = framebuffer[byte_i]
+        # TODO: account for "inverted" mode
+        if on:
+            if result | pixel != result:
+                framebuffer[byte_i] |= pixel
+                self.change_enables[fb_i] = True
+            else:
+                if not force_refresh_enable:
+                    refresh_enable = False
+                else:
+                    self.change_enables[fb_i] = True
+        else:
+            if result & pixel > 0:
+                framebuffer[byte_i] ^= pixel
+                self.change_enables[fb_i] = True
+            else:
+                if not force_refresh_enable:
+                    refresh_enable = False
+                else:
+                    self.change_enables[fb_i] = True
+        if refresh_enable:
+            # msg = "refreshing"
+            # if not self.change_enables[fb_i]:
+                # msg = "not refreshing"
+            # print(msg + " " + str((zone_i, block_i)))
+            self.refresh_block(zone_i, block_i)
 
     def clear(self):
         self.reset_framebuffer()
