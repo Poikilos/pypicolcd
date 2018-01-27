@@ -222,7 +222,7 @@ class PicoLcd:
     #  readability for certain fonts at small sizes (higher values make
     #  font slightly thinner)
     def draw_text(self, row, col, text, font_path=None, font_size=None,
-                  threshold=.5):
+                  threshold=.5, erase_behind_enable=False):
         if self.dc["type"] == "graphics":
             pos = (col, row)  # column is x, row is y
             on_count = 0
@@ -250,12 +250,17 @@ class PicoLcd:
                     is_ok = False
             if is_ok:
                 size = self.dc["width"], self.dc["height"]
+                # intentionally start with useless values:
+                minimums = [size[0], size[1]]
+                maximums = [0, 0]
+
                 im = Image.new('RGBA', size, (255,255,255,0))
                 # fnt = ImageFont.truetype(font_path, 40)
                 fnt = ImageFont.truetype(font_path, font_size)
                 # drawing context:
                 d = ImageDraw.Draw(im)
                 d.text(pos, text, font=fnt, fill=(255,255,255,255))
+                pos_list = []
                 for src_y in range(size[1]):
                     for src_x in range(size[0]):
                         dest_x, dest_y = src_x, src_y
@@ -263,9 +268,28 @@ class PicoLcd:
                         alpha = float(a) / 255.
                         if alpha >= threshold:
                             on_count += 1  # for debugging only
-                            self.set_pixel(dest_x, dest_y, True,
-                                           refresh_enable=False)
+                            if erase_behind_enable:
+                                if dest_x > maximums[0]:
+                                    maximums[0] = dest_x
+                                if dest_x < minimums[0]:
+                                    minimums[0] = dest_x
+                                if dest_y > maximums[1]:
+                                    maximums[1] = dest_y
+                                if dest_y < minimums[1]:
+                                    minimums[1] = dest_y
+                                pos_list.append((dest_x, dest_y))
+                            else:
+                                self.set_pixel((dest_x, dest_y), True,
+                                               refresh_enable=False)
                 # TODO: draw text to PIL Image
+                if erase_behind_enable:
+                    for y in range(minimums[1], maximums[1] + 1):
+                        for x in range(minimums[0], maximums[0] + 1):
+                            self.set_pixel((x, y), False,
+                                           refresh_enable=False)
+                    for this_pos in pos_list:
+                        self.set_pixel(this_pos, True,
+                                       refresh_enable=False)
                 # for y in range(self.dc["height"]):
                     # for x in range(start_x, self.dc["width"]):
                 if on_count < 1:
@@ -317,12 +341,12 @@ class PicoLcd:
                                         # on = val >= threshold
                                         if val >= threshold:
                                             self.set_pixel(
-                                                dst_x, dst_y,
+                                                (dst_x, dst_y),
                                                 invert_enable,
                                                 refresh_enable=False)
                                         else:
                                             self.set_pixel(
-                                                dst_x, dst_y,
+                                                (dst_x, dst_y),
                                                 not invert_enable,
                                                 refresh_enable=False)
                                     else:
@@ -339,7 +363,7 @@ class PicoLcd:
                                         if invert_enable:
                                             on = not on
                                         self.set_pixel(
-                                            dst_x, dst_y,
+                                            (dst_x, dst_y),
                                             on,
                                             refresh_enable=False)
                                     src_x += 1
@@ -447,8 +471,10 @@ class PicoLcd:
     #   all invalidated blocks automatically)
     # force_refresh_enable: draw even if does not differ
     #   from framebuffer
-    def set_pixel(self, x, y, on, refresh_enable=True, force_refresh_enable=False):
+    def set_pixel(self, pos, on, refresh_enable=True,
+                  force_refresh_enable=False):
         # NOTE: one byte covers 8 pixels on y axis from landscape view
+        x, y = pos
         if force_refresh_enable:
             refresh_enable=True
         dst_w = self.dc["width"]

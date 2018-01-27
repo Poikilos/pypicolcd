@@ -102,9 +102,9 @@ def fill():
         for x in range(p.dc["width"]):
             # if x < y:
             set_canvas_pixel(x, y)
-            p.set_pixel(x, y, True)
+            p.set_pixel((x, y), True)
             # else:
-                # p.set_pixel(x, y, False)
+                # p.set_pixel((x, y), False)
 
 def draw_pattern():
     for y in range(64):
@@ -113,7 +113,7 @@ def draw_pattern():
         # if True:
         for x in range(128):
             set_canvas_pixel(x, y)
-            p.set_pixel(x, y, True)
+            p.set_pixel((x, y), True)
 
 def draw_southwest_arrow():
     for y in range(64):
@@ -121,9 +121,9 @@ def draw_southwest_arrow():
             refresh_enable = False
             if x < y:
                 set_canvas_pixel(x, y)
-                p.set_pixel(x, y, True, refresh_enable=refresh_enable)
+                p.set_pixel((x, y), True, refresh_enable=refresh_enable)
             # else:
-                # p.set_pixel(x, y, False)
+                # p.set_pixel((x, y), False)
     # p.invalidate(zones=[0,1])  # was invalidated automatically anyway
     p.refresh()
 
@@ -138,8 +138,8 @@ def getorigin(eventorigin):
     if draw_enable:
         set_canvas_pixel(x0, y0)
         p.set_pixel(x0, y0, True)
-        # p.set_pixel(x0, y0, True)
-        # p.set_pixel(x0, y0, True)
+        # p.set_pixel((x0, y0), True)
+        # p.set_pixel((x0, y0), True)
         count += 1
         print("[ testing ] " + str(count) + " getorigin "
               + str(x0) + "," + str(y0))
@@ -312,7 +312,7 @@ clear_btn.pack()
 # while True:
     # p.draw_text(3, 0, datetime.now().ctime()[:20])
     # time.sleep(0.5)
-# p.set_pixel(4, 0, True)
+# p.set_pixel((4, 0), True)
 # draw_southwest_arrow()
 # draw_pattern()
 # fill()
