@@ -25,7 +25,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
   * negative pos is allowed, which can be used for sprite animations if 64x64 cells in single-column layout or 256x64 cells in any layout
   * see comments above draw_image in picousb.py for more info
 * Draw Text:
-  * row,col format is y,x order (is pixel location if `picolcd.dc["type"] == "graphics"`)
+  * draw_text function's row, col format is y,x order (is considered 6x8 pixel blocks if `picolcd.dc["type"] == "graphics"`), but you can do draw_text_at to avoid that and use pixel locations directly (for text mode, these locations will be interpreted into col,row format in that order for draw_text_at function)
   * see comments above draw_text in picousb.py for more info
 * Pixel manipulation:
   * For drawing many pixels at once, make your drawing faster by using `refresh_enable=False` (such as `picolcd.set_pixel(x, y, True, refresh_enable=False)`), then call `picolcd.refresh()` after all of your `set_pixel` calls are done (draw_text is an example of how to use this optimization)

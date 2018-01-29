@@ -214,7 +214,7 @@ text_id = None
 
 text_entry = tk.Entry(this_root)
 text_entry.pack()
-text_entry.insert(0, "hello")
+text_entry.insert(0, "status:")
 
 threshold = .5
 threshold_enable_ivar = tk.IntVar()
@@ -290,7 +290,7 @@ def draw_text_click():
             # # font="Purisa"
     # else:
         # canvas.itemconfigure(text_id, text=text)
-    p.draw_text(y, x, text, font_size=font_size,
+    p.draw_text_at((x,y), text, font_size=font_size,
                 erase_behind_enable=(text_erase_bg_enable_i.get()>0),
                 threshold=this_t)
     draw_from_source()

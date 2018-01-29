@@ -228,6 +228,21 @@ class PicoLcd:
         return ((outline[0][0]-offset, outline[0][1]-offset),
                 (outline[1][0]+offset, outline[1][1]+offset))
 
+    def draw_text(self, row, col, text, font_path=None, font_size=None,
+                  threshold=None, erase_behind_enable=False,
+                  refresh_enable=True, erase_rect=None):
+        results = None, None
+        pos = col, row  # col,row format is y,x order
+        if self.dc["type"] == "graphics":
+            pos = (col * 5, row * 8)
+        return self.draw_text_at(
+            pos, text, font_path=font_path,
+            font_size=font_size,
+            threshold=threshold,
+            erase_behind_enable=erase_behind_enable,
+            refresh_enable=refresh_enable,
+            erase_rect=erase_rect)
+
     # row,col: the y,x location (in that order; though if
     #   picolcd.dc["type"] is graphics, it will be a pixel location
     #   where row is the middle of the letters)
@@ -253,14 +268,15 @@ class PicoLcd:
     #   wanted, or just record the numbers for future use so you don't
     #   have to repeat those calls for each run--it is also not repeated
     #   inside of this function if you pass an erase_rect)
-    def draw_text(self, row, col, text, font_path=None, font_size=None,
+    def draw_text_at(self, pos, text, font_path=None, font_size=None,
                   threshold=None, erase_behind_enable=False,
                   refresh_enable=True, erase_rect=None):
         results = None, None
+
         if erase_rect is not None:
             erase_behind_enable = True
         if self.dc["type"] == "graphics":
-            pos = (col, row)  # column is x, row is y
+            # pos = (col, row)  # column is x, row is y
             on_count = 0
             is_ok = True
             if font_size is None:
@@ -365,6 +381,7 @@ class PicoLcd:
             if refresh_enable:
                 self.refresh()
         else:
+            col, row = pos  # col, row format is in y,x order
             addr = {0: 0x80, 1: 0xc0, 2:0x94, 3:0xd4}[row] + col
             result = self.wr(bytes(0x94, 0x00, 0x01, 0x00, 0x64, addr))
             if result < 1:
