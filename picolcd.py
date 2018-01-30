@@ -392,6 +392,9 @@ class PicoLcd:
         abs_x, abs_y = self._pos
         dst_w = self.dc["width"]
         dst_h = self.dc["height"]
+        if self._im is None:
+            self._im = Image.new('RGBA', (dst_w, dst_h),
+                                 (255,255,255,0))
         # if x < 0 or y < 0 or x > dst_w or y > dst_h:
             # return False
         zone_width = dst_w / self.dc["zones"]
