@@ -37,13 +37,13 @@ except ImportError:
     # only catch ImportError, so exceptions in picolcd will be shown
 
 try:
-    import Tkinter as tk
-    import tkFont
-    import ttk
-except ImportError:  # Python 3
     import tkinter as tk
     import tkinter.font as tkFont
     import tkinter.ttk as ttk
+except ImportError:  # Python 2
+    import Tkinter as tk
+    import tkFont
+    import ttk
 
 p = None
 cmd_len = None
@@ -150,8 +150,12 @@ p = PicoLcd()
 p.verbose_enable = True
 
 print("Generating form")
-
-root = tk.Tk()
+root = None
+try:
+    root = tk.Tk()
+except:
+    print("FATAL ERROR: Cannot use tkinter from terminal")
+    exit(1)
 # relief='sunken', borderwidth=2, bg='white', width=256, height=500
 # fill='y'
 
@@ -159,12 +163,19 @@ root = tk.Tk()
     # bd=0
 # canvas.pack(expand=1, fill=tk.BOTH)
 # canvas.pack_propagate(False)
-canvas = tk.Canvas(root, width=p.dc["width"], height=p.dc["height"])
-canvas.pack()
-canvas.create_rectangle(0, 0, p.dc["width"], p.dc["height"],
-    outline="WHITE", fill="WHITE")
-    # outline="#fff", fill="#fff")
-
+if p.dc is not None:
+    canvas = tk.Canvas(root, width=p.dc["width"], height=p.dc["height"])
+    canvas.pack()
+    canvas.create_rectangle(0, 0, p.dc["width"], p.dc["height"],
+        outline="WHITE", fill="WHITE")
+        # outline="#fff", fill="#fff")
+else:
+    error = p.error
+    if error is None:
+        error = "Unknown error"
+    error_text = tk.Text(root) # , text=error, justify=tk.LEFT)
+    error_text.pack()
+    error_text.insert(tk.INSERT, error)
 root.wm_title("picolcd testing by expertmm")
 root.bind("<Button 1>", getorigin)
 

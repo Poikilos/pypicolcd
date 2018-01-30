@@ -37,7 +37,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 * make example.py
 * (fix use of refresh_enable) make force_refresh_enable=True work where on=False
 * draw text
-* draw image with threshold or dithering
+* draw image with threshold OR dithering
 
 
 ## Known Issues
@@ -58,6 +58,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 
 
 ## Developer Notes
+* Stripe caches (_s_cache) is a dict of dicts of list of bytes where each byte is a vertical stripe of 8 pixels (cached this way since device writes that way)
 * To get font rect (for graphics type devices only), try something like
 ```python
 last_rect = picolcd.draw_text(

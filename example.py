@@ -1,6 +1,4 @@
 #!/bin/env python3
-from picolcd import PicoLcd
-from datetime import datetime
 # (example for) pypicolcd, a module for driverless writing to picoLCD
 # Copyright (C) 2018  Jake Gustafson
 
@@ -17,8 +15,20 @@ from datetime import datetime
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-p = PicoLcd()
+from picolcd import PicoLcd
+from datetime import datetime
+import random
+import timeit
+from timeit import default_timer as best_timer
 
+p = PicoLcd()
+if p.dc is None:
+    error = p.error
+    if error is None:
+        error = "ERROR: could not load device for unknown reason."
+        print(error)
+    # else error already shown by p
+    exit(1)
 # p.set_pixel((0, 0), False, force_refresh_enable=True)
 # NOTE: if you try to do p.set_pixel((0, 0), False) before True,
 # and LCD was already displaying a pixel from a previous session,
@@ -73,6 +83,24 @@ b = y + im_h
 x, y = 128, 64-im_h
 count = 0
 max_count = 1000
+count = 0
+_fps_last_frame_tick = None
+_fps_accumulated_time = 0.
+_fps_accumulated_count = 0
+last_update_s = None
+print("Press Ctrl C to exit. Drawing "
+      + str(max_count) + " random number(s)...")
+fps = None
+while count < max_count:
+    n = random.randrange(10)
+    p.push_text(str(n))
+    count += 1
+    fps = p.generate_fps()  # only gets fps at interval set by
+                            # set_fps_interval, otherwise None
+    # fps = p.get_fps()  # always gets fps if has ever been calculated
+    if fps is not None:
+        print("[ example.py ] fps: " + str(fps))
+
 print("Press Ctrl C to exit. Drawing "
       + str(max_count) + " animation frames(s)...")
 while count < max_count:
