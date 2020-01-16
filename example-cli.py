@@ -55,15 +55,15 @@ x, y = 0, 1
 # p.draw_text(y, x, "Zephyrean works if tiny ",
             # font_path="fonts/zephyreg.ttf",  # reg is illegible small
             # font_size=7, threshold=.5)
-p.draw_text(y, x, "Zephyrean is smallest 8pt readable font",
+p.draw_text(y, x, "\"Zephyrean\" font: smallest 8pt readable font",
             font_path="fonts/zephyrea.ttf",
             font_size=8, threshold=.5)
 x, y = 0, 2
-p.draw_text(y, x, "Flottflott font is unreadable below font size 11",
+p.draw_text(y, x, "\"Flottflott\" font: unreadable below font size 11",
             font_path="fonts/Flottflott.ttf",
             font_size=11, threshold=.5, erase_behind_enable=True)
 x, y = 0, 3
-p.draw_text(y, x, "Press Start is the name of this font",
+p.draw_text(y, x, "\"Press Start\" font",
             font_path="fonts/prstartk.ttf", font_size=6,
             erase_behind_enable=True)
 print("Your LCD should now show info about included fonts"

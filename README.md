@@ -1,9 +1,8 @@
 # pypicolcd
 <https://github.com/expertmm/pypicolcd>
 
-Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLcd class.
+Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLCD class.
 ![kitten](https://github.com/expertmm/pypicolcd/raw/master/screenshot.jpg)
-
 
 ## Main Features
 * Easy: see <https://github.com/expertmm/pypicolcd/blob/master/example.py>
@@ -15,8 +14,13 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 
 
 ## Requirements
-* pyusb (`sudo python3 -m pip install pyusb`)
-* PIL (`sudo python3 -m pip install Pillow` or `sudo python -m pip install Pillow` or on arch, `pacman -Syu python-pillow`)
+- Install via pip to get all dependencies:
+```bash
+
+```
+- The pip install automatically gets the dependencies:
+  - pyusb (formerly `sudo python3 -m pip install pyusb`)
+  - PIL (formerly `sudo python3 -m pip install Pillow` or `sudo python -m pip install Pillow` or on arch, `pacman -Syu python-pillow`)
 
 
 ## Usage
@@ -29,7 +33,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
   * see comments above draw_text in picousb.py for more info
 * Pixel manipulation:
   * For drawing many pixels at once, make your drawing faster by using `refresh_enable=False` (such as `picolcd.set_pixel(x, y, True, refresh_enable=False)`), then call `picolcd.refresh()` after all of your `set_pixel` calls are done (draw_text is an example of how to use this optimization)
-  * get_pixel only works for pixels created during the life of the PicoLcd object, since it gets pixels from the offscreen pixelbuffers
+  * get_pixel only works for pixels created during the life of the PicoLCD object, since it gets pixels from the offscreen pixelbuffers
 
 
 ## Changes
@@ -83,7 +87,7 @@ last_rect = picolcd.draw_text(
   * Sends any bytes you want to your picoLCD without a driver!
 
 ### Communication Protocol
-(only picoLCD 256x64 was tested)
+(only "picoLCD 256x64 Sideshow" was tested)
 
 You must sent a byte array. Python will throw an exception if any integer in `this_list` is >255. `bytes(this_list)`.
 In LANDSCAPE orientation:

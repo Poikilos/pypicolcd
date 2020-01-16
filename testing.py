@@ -19,7 +19,7 @@ from datetime import datetime
 import time
 import binascii
 try:
-    from picolcd import PicoLcd
+    from picolcd import PicoLCD
     try:
         from picolcd import OUT_REPORT_CMD_DATA
     except:
@@ -146,7 +146,7 @@ def getorigin(eventorigin):
         print("[ testing ] " + str(count) + " getorigin "
               + str(x0) + "," + str(y0))
 
-p = PicoLcd()
+p = PicoLCD()
 p.verbose_enable = True
 
 print("Generating form")

@@ -21,6 +21,11 @@ This is free software, and you are welcome to redistribute it
 under certain conditions; open LICENSE file in text editor for details.
 """
 
+font_meta = {}
+font_meta["press start"] = {}
+font_meta["press start"]["file"] = "prstartk.ttf"
+font_meta["press start"]["default_size"] = 6
+
 try:
     import usb
 except ImportError:
@@ -45,6 +50,28 @@ def view_traceback(indent=""):
     traceback.print_tb(tb)
     del tb
     print("")
+
+def to_bool(s):
+    if (s is None) or (len(s) < 1):
+        raise ValueError("to_bool got a blank value.")
+    ret = None
+    if s is True:
+        return True
+    if s is False:
+        return False
+    s_lower = s.lower()
+    if s_lower == "false":
+        ret = False
+    elif s_lower == "0":
+        ret = False
+    elif s_lower == "no":
+        ret = False
+    elif s_lower == "off":
+        ret = False
+    else:
+        ret = True
+    return ret
+
 
 def bytes(*b):
     return "".join([chr(x) for x in b])
@@ -107,7 +134,7 @@ def get_pixel_color(canvas, x, y):
     return "WHITE"
 
 
-class PicoLcd:
+class PicoLCD:
 
     def __init__(self):
         self.dc = None  # device characteristics
@@ -169,7 +196,7 @@ class PicoLcd:
             try:
                 self.handle.detachKernelDriver(0)
             except usb.USBError:
-                # print("[ PicoLcd ] nothing to detach")
+                # print("[ PicoLCD ] nothing to detach")
                 pass
             try:
                 self.handle.claimInterface(0)
@@ -207,7 +234,7 @@ class PicoLcd:
                     + '", GROUP="root"')
                 self.error += (
                     "\n" + 'LABEL="datalogger_rules_end"')
-                print("[ PicoLcd ] ERROR--" + self.error + ": ")
+                print("[ PicoLCD ] ERROR--" + self.error + ": ")
                 view_traceback()
         else:
             if self.error is None:
@@ -347,7 +374,7 @@ class PicoLcd:
                 for_msg = (" (adjusted from .5 to acommodate edges"
                            " of blocks in ninepin font)")
             if self.verbose_enable:
-                print("[ PicoLcd ] (verbose message in draw_text)"
+                print("[ PicoLCD ] (verbose message in draw_text)"
                       + "threshold was None so reverted to default"
                       + for_msg + ": "
                       + str(threshold))
@@ -355,11 +382,11 @@ class PicoLcd:
         if font_path is None:
             font_path = self.default_font_path
             if self.verbose_enable:
-                print("[ PicoLcd ] (verbose message in draw_text)"
+                print("[ PicoLCD ] (verbose message in draw_text)"
                       + " reverted to default font '"
                       + font_path + "'")
             if not os.path.isfile(font_path):
-                print("[ PicoLcd ] ERROR in draw_text:"
+                print("[ PicoLCD ] ERROR in draw_text:"
                       + " missing default font '"
                       + font_path + "'")
                 is_ok = False
@@ -368,7 +395,7 @@ class PicoLcd:
             if os.path.isfile(try_path):
                 font_path = try_path
             else:
-                print("[ PicoLcd ] ERROR in draw_text:"
+                print("[ PicoLCD ] ERROR in draw_text:"
                       " font '" + font_path + "' not found.")
                 is_ok = False
         if not is_ok:
@@ -402,7 +429,7 @@ class PicoLcd:
         font_size = self.default_font_size
         threshold = .5
         if self.dc["type"] != "graphics":
-            print("[ PicoLcd ] ERROR in push_text: this function"
+            print("[ PicoLCD ] ERROR in push_text: this function"
                   " is not implemented except for graphics type"
                   " displays.")
             return None, None
@@ -629,7 +656,7 @@ class PicoLcd:
             # for y in range(self.dc["height"]):
                 # for x in range(start_x, self.dc["width"]):
             if on_count < 1:
-                print("[ PicoLcd ] WARNING in draw_text: offscreen"
+                print("[ PicoLCD ] WARNING in draw_text: offscreen"
                       + " buffer had " + str(on_count)
                       + " text pixels")
             if refresh_enable:
@@ -714,7 +741,7 @@ class PicoLcd:
                     src_y += -dst_y
             self.refresh()
         except:
-            print("[ PicoLcd ] ERROR--could not finish loading image:")
+            print("[ PicoLCD ] ERROR--could not finish loading image:")
             view_traceback()
 
     # Invalidate rectangle of lcd to force refresh to refresh them
@@ -752,7 +779,7 @@ class PicoLcd:
                     if (even_z_i_i > -1):
                         del zones[even_z_i_i]
         except:
-            print("[ PicoLcd ] ERROR--Could not finish invalidate {"
+            print("[ PicoLCD ] ERROR--Could not finish invalidate {"
                   + " last_zone_i: " + str(last_zone_i)
                   + "; zones: " + str(zones)
                   + "}")
@@ -770,7 +797,7 @@ class PicoLcd:
     # Refresh all or part of lcd from framebuffers
     # where invalidated (where set_pixel was called or other operation
     # was done). For advanced use, such as if you drew to a framebuffer
-    # manually, call invalidate first to inform PicoLcd which
+    # manually, call invalidate first to inform PicoLCD which
     # framebuffers changed
     def refresh(self):
         for fb_i in range(len(self.change_enables)):
@@ -858,7 +885,7 @@ class PicoLcd:
         byte_i = x % self.dc["block_size"]
         pixel = 1 << bit_i
         if (fb_i < 0) or (fb_i >= len(self.framebuffers)):
-            print("[ PicoLcd ] ERROR in get_pixel: buffer "
+            print("[ PicoLCD ] ERROR in get_pixel: buffer "
                   + str(fb_i) + " does not exist in "
                   + str(len(self.framebuffers)) + "-len buffer list.")
             return False
@@ -892,13 +919,13 @@ class PicoLcd:
         byte_i = x % self.dc["block_size"]
         pixel = 1 << bit_i
         # if self.verbose_enable:
-            # print("[ PicoLcd ] (verbose message in set_pixel)"
+            # print("[ PicoLCD ] (verbose message in set_pixel)"
                   # + " " + str((x,y)) + " results in"
                   # + " framebuffer[" + str((fb_i)) + "]"
                   # + " zone,block=" + str((zone_i, block_i))
                   # + " byte=" + str(byte_i) + " bit=" + str(bit_i))
         if (fb_i < 0) or (fb_i >= len(self.framebuffers)):
-            print("[ PicoLcd ] ERROR in set_pixel: buffer "
+            print("[ PicoLCD ] ERROR in set_pixel: buffer "
                   + str(fb_i) + " does not exist in "
                   + str(len(self.framebuffers)) + "-len buffer list.")
             return 0
@@ -949,13 +976,13 @@ class PicoLcd:
         byte_i = x % self.dc["block_size"]
         pixel = dat_b
         # if self.verbose_enable:
-            # print("[ PicoLcd ] (verbose message in set_pixel)"
+            # print("[ PicoLCD ] (verbose message in set_pixel)"
                   # + " " + str((x,y)) + " results in"
                   # + " framebuffer[" + str((fb_i)) + "]"
                   # + " zone,block=" + str((zone_i, block_i))
                   # + " byte=" + str(byte_i) + " bit=" + str(bit_i))
         # if (fb_i < 0) or (fb_i >= len(self.framebuffers)):
-            # print("[ PicoLcd ] ERROR in set_pixel: buffer "
+            # print("[ PicoLCD ] ERROR in set_pixel: buffer "
                   # + str(fb_i) + " does not exist in "
                   # + str(len(self.framebuffers)) + "-len buffer list.")
             # return 0
@@ -995,7 +1022,7 @@ class PicoLcd:
 
 if __name__ == "__main__":
     from datetime import datetime
-    p = PicoLcd()
+    p = PicoLCD()
     if p.dc is None:
         error = p.error
         if error is None:
@@ -1011,5 +1038,5 @@ if __name__ == "__main__":
         y = pixel_y
     p.draw_text(y, 0, datetime.now().ctime()[:20])
     print("You can use this module like:")
-    print("  from picolcd import PicoLcd")
-    print("  p = PicoLcd()")
+    print("  from picolcd import PicoLCD")
+    print("  p = PicoLCD()")
