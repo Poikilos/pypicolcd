@@ -14,6 +14,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 
 
 ## Requirements
+- pypicolcd uses Python 3, and though has some Python 2 considerations, is not thoroughly tested on Python 2. Therefore, make sure virtualenv is Python 3 by default, otherwise follow a guide to use the Python 3 virtualenv (such as [Installing and using virtualenv with Python 3](https://help.dreamhost.com/hc/en-us/articles/115000695551-Installing-and-using-virtualenv-with-Python-3)).
 - Install via pip to get all dependencies:
 ```bash
 customDie() {
@@ -36,7 +37,11 @@ fi
 virtualenv lcd || customDie "'virtualenv lcd' failed in `pwd` as $USER"
 source lcd/bin/activate || customDie "'source lcd/bin/activate' failed in `pwd`"
 pip install pip --upgrade || customDie "'pip install pip --upgrade' failed in `pwd` as $USER"
-pip install https://github.com/poikilos/pypicolcd/archive/master.zip || customDie "'pip install octoprint --upgrade' failed in `pwd` as $USER"
+option=""
+if [ ! -z "`pip list | grep -F pypicolcd`" ]; then
+    option="--upgrade"
+fi
+pip install $option https://github.com/poikilos/pypicolcd/archive/master.zip || customDie "'pip install octoprint --upgrade' failed in `pwd` as $USER"
 deactivate
 
 
