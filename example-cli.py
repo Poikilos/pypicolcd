@@ -15,13 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from picolcd import PicoLcd
+from pypicolcd import PicoLCD
 from datetime import datetime
 import random
 import timeit
 from timeit import default_timer as best_timer
 
-p = PicoLcd()
+p = PicoLCD()
 if p.dc is None:
     error = p.error
     if error is None:
@@ -33,7 +33,7 @@ if p.dc is None:
 # NOTE: if you try to do p.set_pixel((0, 0), False) before True,
 # and LCD was already displaying a pixel from a previous session,
 # Nothing will be done since framebuffer is not loaded from chip
-# but generated on creation of PicoLcd class (unless
+# but generated on creation of PicoLCD class (unless
 # you pass force_refresh_enable=True to set_pixel)
 
 p.clear()

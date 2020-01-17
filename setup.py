@@ -29,7 +29,7 @@ setuptools.setup(
     # scripts = ['example'] ,
     # See https://stackoverflow.com/questions/27784271/how-can-i-use-setuptools-to-generate-a-console-scripts-entry-point-which-calls
     entry_points = {
-	'console_scripts': ['pypicolcd-cli=command_line:main'],
+	'console_scripts': ['pypicolcd-cli=pypicolcd.command_line:main'],
     },
     install_requires = [
 	'pyusb',

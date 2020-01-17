@@ -1,5 +1,5 @@
 # pypicolcd
-<https://github.com/expertmm/pypicolcd>
+<https://github.com/poikilos/pypicolcd>
 
 Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLCD class.
 ![kitten](https://github.com/expertmm/pypicolcd/raw/master/screenshot.jpg)
@@ -16,6 +16,29 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 ## Requirements
 - Install via pip to get all dependencies:
 ```bash
+customDie() {
+    echo
+    echo
+    echo "ERROR:"
+    echo "$1"
+    echo
+    echo
+    exit 1
+}
+cd ~
+# if [ ! -d "lcd" ]; then
+#     mkdir lcd || customDie "'mkdir lcd' failed in `pwd` as $USER"
+# fi
+# cd lcd || customDie "'cd lcd' failed in `pwd`."
+if [ -d "lcd" ]; then
+    customDie "`pwd`/lcd already exists. Try removing it, or run the remaining commands (after and not including 'virtualenv lcd') if it is already a virtualenv"
+fi
+virtualenv lcd || customDie "'virtualenv lcd' failed in `pwd` as $USER"
+source lcd/bin/activate || customDie "'source lcd/bin/activate' failed in `pwd`"
+pip install pip --upgrade || customDie "'pip install pip --upgrade' failed in `pwd` as $USER"
+pip install https://github.com/poikilos/pypicolcd/archive/master.zip || customDie "'pip install octoprint --upgrade' failed in `pwd` as $USER"
+deactivate
+
 
 ```
 - The pip install automatically gets the dependencies:
