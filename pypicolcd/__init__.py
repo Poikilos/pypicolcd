@@ -24,9 +24,7 @@ under certain conditions; open LICENSE file in text editor for details.
 try:
     import usb
 except ImportError:
-    print("pypicolcd requires pyusb")
-    print("such as via:")
-    print("  sudo pip install pyusb")
+    raise ImportError("pypicolcd requires pyusb")
 
 import time
 import sys
@@ -196,16 +194,19 @@ class PicoLCD:
         this_idVendor = None
         this_idProduct = None
         self.error = None
+        this_device = None
+        found_count = 0
         for bus in buses:
             for device in bus.devices:
                 if device.idVendor == 0x04d8 and \
                         str(device.idProduct) in DC_DICT.keys():
                        # device.idProduct in ids:
-                    lcd = device
+                    this_device = device
                     self.dc = DC_DICT[str(device.idProduct)]
                     this_idVendor = device.idVendor
                     this_idProduct = device.idProduct
                     self.blab("found " + self.dc["name"])
+                    found_count += 1
         if self.dc is not None:
             self.change_enables = []
             for block_i in range(self.dc["blockrows"]):
@@ -232,8 +233,9 @@ class PicoLCD:
                 # self.framebuffers.append(self.framebuffer)
                 pass
             self.reset_framebuffer()
-        if lcd is not None:
-            self.handle = lcd.open()
+
+        if this_device is not None:
+            self.handle = this_device.open()
             try:
                 self.handle.detachKernelDriver(0)
             except usb.USBError:
@@ -256,32 +258,44 @@ class PicoLCD:
                     un = getpass.getuser()
                 except:
                     pass
-                self.error = ("Could not finish claiming interface. "
-                              + un + " must have root access or be"
-                              + " given permission to manage device id "
-                              + idp_i_s + " (hex " + idp_s + ")"
-                              + " via a udev rule file such as ")
-                self.error += (" /etc/udev/rules.d/50-picoUSB"
-                               + idp_s + ".conf, for example:")
-                self.error += (
-                    "\n" + 'SUBSYSTEM !="usb_device",'
-                    + ' ACTION !="add", GOTO="datalogger_rules_end"')
-                self.error += (
-                    "\n" + 'SYSFS{idVendor} =="' + idv_s
-                    + '", SYSFS{idProduct} =="' + idp_s
-                    + '", SYMLINK+="datalogger"')
-                self.error += (
-                    "\n" + 'MODE="0666", OWNER="' + un
-                    + '", GROUP="root"')
-                self.error += (
-                    "\n" + 'LABEL="datalogger_rules_end"')
-                print("[ PicoLCD ] ERROR--" + self.error + ": ")
+
+                self.error = "  Claiming the interface failed. "
+                if un == "root":
+                    self.error += ("\n  You are root, so this shouldn't"
+                                   " happen.")
+                else:
+                    self.error += (un + " must have root access or be"
+                                   + " given permission to manage"
+                                   + " device id"
+                                   + idp_i_s + " (hex " + idp_s + ")"
+                                   + " via a udev rule file such as ")
+                    self.error += (" /etc/udev/rules.d/50-picoUSB"
+                                   + idp_s + ".conf, for example:")
+                    self.error += (
+                        "\n" + 'SUBSYSTEM !="usb_device",'
+                        + ' ACTION !="add", GOTO="datalogger_rules_end"')
+                    self.error += (
+                        "\n" + 'SYSFS{idVendor} =="' + idv_s
+                        + '", SYSFS{idProduct} =="' + idp_s
+                        + '", SYMLINK+="datalogger"')
+                    self.error += (
+                        "\n" + 'MODE="0666", OWNER="' + un
+                        + '", GROUP="root"')
+                    self.error += (
+                        "\n" + 'LABEL="datalogger_rules_end"')
+                    self.error += ("\n\n")
+                    self.error += ("* However, on some systems, the"
+                                   " following may work:\n")
+                    self.error += ("sudo usermod -a -G dialout " + un)
+                # print("[ PicoLCD ] ERROR--" + self.error + ": ")
+                # NOTE: self.error is shown further down.
                 view_traceback()
         else:
             if self.error is None:
                 self.error = ("ERROR: pypicolcd did not find a"
                               " known product ID connected to USB.")
         if self.error is not None:
+            print("* pypicolcd found {} known device(s)".format(found_count))
             print(self.error)
 
         self._fps_interval = .4
@@ -291,7 +305,7 @@ class PicoLCD:
         self._last_update_s = None
         self._fps_accumulated_time = 0.
         self._fps_accumulated_count = 0
-    
+
     def blab(self, msg, where=None):
         if self.verbose_enable:
             w_msg = ""
@@ -308,7 +322,7 @@ class PicoLCD:
 
     def get_height(self):
         return self.dc["height"]
-    
+
     def generate_fps(self):
         result = None
         # if self._last_update_s is not None:

@@ -28,7 +28,7 @@ try:
         from pypicolcd import OUT_REPORT_DATA  # by sphinx
     except ImportError:
         raise ImportError("Missing OUT_REPORT_DATA")
-    try ImportError:
+    try:
         from pypicolcd import find_resource
     except ImportError:
         raise ImportError("Missing find_resource")
@@ -162,6 +162,9 @@ def getorigin(eventorigin):
               + str(x0) + "," + str(y0))
 
 p = PicoLCD()
+if p.dc is None:
+    print("* Device initialization is not complete.")
+    exit(1)
 p.verbose_enable = True
 
 print("Generating form")

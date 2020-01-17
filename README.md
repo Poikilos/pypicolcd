@@ -13,7 +13,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 * Fault-tolerant: draw anything beyond range of LCD and will not crash nor miss good parts
 * Image Dithering: draw color image, and it will automatically be dithered to 1-bit by luminosity (threshold is also possible)
 
-This module is different than pyusblcd, since that requires the (non-python) picoLCD driver and this module does not.
+This module is different than pyusblcd, since that requires the (non-Python) picoLCD driver and this module does not.
 
 ## Requirements
 - pypicolcd uses Python 3, and though has some Python 2 considerations, is not thoroughly tested on Python 2. Therefore, make sure virtualenv is Python 3 by default, otherwise follow a guide to use the Python 3 virtualenv (such as [Installing and using virtualenv with Python 3](https://help.dreamhost.com/hc/en-us/articles/115000695551-Installing-and-using-virtualenv-with-Python-3)).
