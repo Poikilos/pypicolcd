@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [git] - 2020-01-17
+### Added
+- The pip install now includes the necessary data files (fonts and
+  images) via the added MANIFEST.in for setuptools.
+
+### Changed
+- The command is now lcd-cli (It still uses command_line.py).
+- The pip install now works properly, and imports work properly.
+- The module name is now consistent (pypicolcd).
+- Old changes from the README.md are now in this file.
 
 ## [git] - 2020-01-15
 ### Added

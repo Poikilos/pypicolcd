@@ -16,6 +16,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from pypicolcd import PicoLCD
+from pypicolcd import to_bool
+# from pypicolcd import find_resource
+from pypicolcd import get_font_meta
 from datetime import datetime
 import random
 import timeit
@@ -32,7 +35,7 @@ def customDie(msg, exit_code=1):
     print("")
     print("")
     exit(exit_code)
-_LINES_MAX = 4
+
 
 
 def show_image(path, params={}, destination=None):
@@ -45,6 +48,7 @@ def show_image(path, params={}, destination=None):
     return p
 
 def show_lines(lines, params={}, destination=None):
+    shown_count = 0
     p = destination
     if p is None:
         p = PicoLCD()
@@ -60,34 +64,40 @@ def show_lines(lines, params={}, destination=None):
     if lines is None:
         lines = []
     x, y = 0, -1
+    meta = get_font_meta("Press Start")
+    _LINES_MAX = p.get_height() // (meta["default_size"] + 1)
     for line in lines:
-        if len(lines) < _LINES_MAX:
+        if y < _LINES_MAX:
             y += 1
             # p_dfs = p.default_font_size
             # p.draw_text(y, x,
                         # "Default font is " + str(p_dfs) + "pt ninepin")
-
-            PicoLCD.find_font("Press Start")
-            p.draw_text(y, x, "\"Press Start\" font",
-                        font_path="fonts/prstartk.ttf", font_size=6,
+            if line is None:
+                raise ValueError("line is None")
+            print("* showing '{}'...".format(line))
+            p.draw_text(y, x, line, font="Press Start",
                         erase_behind_enable=True)
-            print("Your LCD should now show info about included fonts"
-                  " which are available on graphics type picoLCD models.")
+            shown_count += 1
         else:
-            customDie("Only {} line(s) fit(s) on the LCD--skipping '{}'.".format(_LINES_MAX, arg))
+            customDie("* Only {} line(s) fit(s) on the LCD, so '{}'"
+                      " will not appear.".format(_LINES_MAX, line))
+    # print("* show_lines is complete. The LCD should have"
+          # " {} lines.".format(shown_count))
     return p
-
 
 def main():
     settings = {}
     lines = []
     allowed_names = ["background", "foreground"]
+    if len(sys.argv) < 1:
+        sys.stdout.write("You didn't provide any parameters, so there is nothing to do.")
+        return 1
     for i in range(1, len(sys.argv)):
         arg = sys.argv[i]
         if arg.startswith("--"):
             if (len(arg) == 2):
                 customDie("There was a blank argument")
-            arg_parts = arg.split("=")
+            arg_parts = arg[2:].split("=")
             arg_n = arg_parts[0]
             arg_v = None
             if len(arg_parts) > 1:
@@ -96,16 +106,17 @@ def main():
                 if len(argv) == 0:
                     customDie("There was a blank value: " + arg)
             else:
-                settings[arg_n] = True
+                # settings[arg_n] = True
+                arg_v = True
 
             if len(arg_parts) > 2:
                 customDie("There was more than one '=' in {}".format(arg))
             if arg_n == "clear":
-                settings[arg_n] = PicoLCD.to_bool(arg_v)
+                settings[arg_n] = to_bool(arg_v)
             elif arg_n in allowed_names:
                 settings[arg_n] = arg_v
             else:
-                customDie("{} is an unknown option.".format(arg))
+                customDie("{} is an unknown option (name '{}', value '{}').".format(arg, arg_n, arg_v))
         else:
             lines.append(arg)
     p = PicoLCD()

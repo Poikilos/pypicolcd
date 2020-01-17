@@ -48,13 +48,13 @@ def view_traceback(indent=""):
     print("")
 
 def to_bool(s):
+    if s is True: # MUST BE FIRST
+        return True
+    elif s is False:
+        return False
     if (s is None) or (len(s) < 1):
         raise ValueError("to_bool got a blank value.")
     ret = None
-    if s is True:
-        return True
-    if s is False:
-        return False
     s_lower = s.lower()
     if s_lower == "false":
         ret = False
@@ -303,6 +303,12 @@ class PicoLCD:
                 w_msg = " in " + calframe[1][3]
             print("[ pypicolcd ] (verbose message" + w_msg + ") " + msg)
 
+    def get_width(self):
+        return self.dc["width"]
+
+    def get_height(self):
+        return self.dc["height"]
+    
     def generate_fps(self):
         result = None
         # if self._last_update_s is not None:
@@ -585,13 +591,21 @@ class PicoLCD:
         self.refresh()
 
 
-    def draw_text(self, row, col, text, font_path=None, font_size=None,
-                  threshold=None, erase_behind_enable=False,
-                  refresh_enable=True, erase_rect=None):
+    def draw_text(self, row, col, text, font=None, font_path=None,
+                  font_size=None, threshold=None,
+                  erase_behind_enable=False, refresh_enable=True,
+                  erase_rect=None):
         results = None, None
         pos = col, row  # col,row format is y,x order
         if self.dc["type"] == "graphics":
             pos = (col * 5, row * 8)
+        if (font_path is None) and (font is not None):
+            meta = get_font_meta(font)
+            if meta is None:
+                raise ValueError("The font is not known. Try (case"
+                                 " doesn't matter):"
+                                 " {}".format(font_meta.keys()))
+            font_path = meta["path"]
         return self.draw_text_at(
             pos, text, font_path=font_path,
             font_size=font_size,

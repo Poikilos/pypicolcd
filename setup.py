@@ -26,10 +26,11 @@ setuptools.setup(
     license = 'GPLv3+',
     # packages = setuptools.find_packages(),
     packages = ['pypicolcd'],
+    include_package_data = True, # look for MANIFEST.in
     # scripts = ['example'] ,
     # See https://stackoverflow.com/questions/27784271/how-can-i-use-setuptools-to-generate-a-console-scripts-entry-point-which-calls
     entry_points = {
-	'console_scripts': ['pypicolcd-cli=pypicolcd.command_line:main'],
+	'console_scripts': ['lcd-cli=pypicolcd.command_line:main'],
     },
     install_requires = [
 	'pyusb',
