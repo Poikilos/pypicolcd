@@ -25,6 +25,9 @@ font_meta = {}
 font_meta["press start"] = {}
 font_meta["press start"]["file"] = "prstartk.ttf"
 font_meta["press start"]["default_size"] = 6
+font_meta["ninepin"] = {}
+font_meta["ninepin"]["file"] = "ninepin.ttf"
+font_meta["ninepin"]["default_size"] = 8
 
 try:
     import usb
@@ -133,6 +136,19 @@ def get_pixel_color(canvas, x, y):
               " at " + str((x, y)))
     return "WHITE"
 
+my_path = os.path.abspath(os.path.dirname(__file__))
+
+def find_resource(path):
+    ret = None
+    in_module_path = os.path.join(my_path, path)
+    if os.path.isfile(in_module_path):
+        ret = in_module_path
+    elif os.path.isfile(os.path.abspath(path)):
+        ret = os.path.abspath(path)
+    else:
+        print("ERROR: resource is not present here or in"
+              " '{}': '{}'".format(my_path, path))
+    return ret
 
 class PicoLCD:
 
@@ -143,7 +159,7 @@ class PicoLCD:
         self.change_enables = None
         self.handle = None
         self.verbose_enable = False
-        self.default_font_size = 8
+        self.default_font_size = font_meta["ninepin"]["default_size"]
         self._pos = (0, 0)
         self._f_cache = {}  # font cache
         self._s_cache = {}  # each character as stripes (pixel columns)

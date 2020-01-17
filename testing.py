@@ -25,9 +25,13 @@ try:
     except:
         print("Missing OUT_REPORT_CMD_DATA")
     try:
-        from picolcd import OUT_REPORT_DATA
+        from picolcd import OUT_REPORT_DATA  # by sphinx
     except:
         print("Missing OUT_REPORT_DATA")
+    try:
+        from picolcd import find_resource
+    except:
+        print("Missing find_resource")
 except ImportError:
     print("requires picolcd.py such as from")
     print("  http://excamera.com/sphinx/article-picolcd.html")
@@ -44,6 +48,22 @@ except ImportError:  # Python 2
     import Tkinter as tk
     import tkFont
     import ttk
+
+import os
+my_path = os.path.abspath(os.path.dirname(__file__))
+
+def local_resource(path):
+    ret = None
+    if os.path.isfile(os.path.join(my_path, path)):
+        ret = os.path.join(my_path, path)
+        # print("* INFO: found '{}'".format(path))
+    elif os.path.isfile(os.path.abspath(path)):
+        ret = os.path.abspath(path)
+        # print("* INFO: found '{}'".format(path))
+    else:
+        raise FileNotFoundError("ERROR: resource is not present here or"
+                                " in '{}': '{}'".format(my_path, path))
+    return ret
 
 p = None
 cmd_len = None
@@ -176,7 +196,7 @@ else:
     error_text = tk.Text(root) # , text=error, justify=tk.LEFT)
     error_text.pack()
     error_text.insert(tk.INSERT, error)
-root.wm_title("picolcd testing by expertmm")
+root.wm_title("picolcd testing by Poikilos")
 root.bind("<Button 1>", getorigin)
 
 l_frame = tk.Frame(root)
@@ -255,13 +275,13 @@ def draw_image_click():
         image_pos_y_entry.insert(0, "0")
     if threshold_entry.get().strip() == "":
         threshold_entry.delete(0, tk.END)
-        threshold_entry.insert(0, ".5")
+        threshold_entry.insert(0, ".3")
     x = int(image_pos_x_entry.get().strip())
     y = int(image_pos_y_entry.get().strip())
     if threshold_enable_ivar.get() > 0:  # checkbox is 1 or 0 in tkinter
         this_t = float(threshold_entry.get().strip())
-    p.draw_image((x,y), "images/kitten.jpg", threshold=this_t)
-    # p.draw_image((0,0), "images/kitten.jpg")
+    p.draw_image((x,y), find_resource("images/kitten.jpg"), threshold=this_t)
+    # p.draw_image((0,0), find_resource("images/kitten.jpg"))
     draw_from_source()
 
 text_pos_x_entry = None
@@ -275,7 +295,7 @@ def draw_text_click():
     global threshold_entry
     if threshold_entry.get().strip() == "":
         threshold_entry.delete(0, tk.END)
-        threshold_entry.insert(0, ".5")
+        threshold_entry.insert(0, ".3")
     this_t = None
     if threshold_enable_ivar.get() > 0:  # checkbox is 1 or 0 in tkinter
         this_t = float(threshold_entry.get().strip())

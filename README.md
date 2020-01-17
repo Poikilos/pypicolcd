@@ -2,10 +2,10 @@
 <https://github.com/poikilos/pypicolcd>
 
 Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLCD class.
-![kitten](https://github.com/expertmm/pypicolcd/raw/master/screenshot.jpg)
+![kitten](https://github.com/poikilos/pypicolcd/raw/master/screenshot.jpg)
 
 ## Main Features
-* Easy: see <https://github.com/expertmm/pypicolcd/blob/master/example.py>
+* Easy: see <https://github.com/poikilos/pypicolcd/blob/master/example.py>
 * Draw without driver
 * Fast: refresh only refreshes zones invalidated
 * Draw without dependencies other than pyusb and PIL
@@ -84,8 +84,8 @@ deactivate
     * naturally 8px high including descenders
   * flottflott font: by Peter Wiegel on <http://www.1001fonts.com/flottflott-font.html>  LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification allowed, Redistribution allowed, SIL Open Font License (OFL) -- see "fonts/flottflott/Open Font License.txt" and "fonts/flottflott/OFL-FAQ.txt"
   * zephyrean font family (zephyrea.ttf, zephyreg.ttf) by Ænigma Fonts on <http://www.1001fonts.com/zephyrean-font.html> LICENSE is "fonts/1001Fonts General Font Usage Terms.txt" except with the following specifics stated by author: Free for personal use, Free for commercial use, Modification NOT allowed, Redistribution allowed, custom "use them any way you want" license (see "fonts/zephyrean/zephyrean.txt")
-  * ilyessuti on pixnio: CC0 licensed kitten*.jpg (2017-12-21-14-52-48) <https://pixnio.com/fauna-animals/cats-and-kittens/field-grass-cute-summer-nature-cat-outdoor-flower>, retouch expertmm -- see "images/CC0.txt"
-* expertmm <https://github.com/expertmm> code and resources not mentioned above: resources created by expertmm are CC0 -- see "images/CC0.txt")
+  * ilyessuti on pixnio: CC0 licensed kitten*.jpg (2017-12-21-14-52-48) <https://pixnio.com/fauna-animals/cats-and-kittens/field-grass-cute-summer-nature-cat-outdoor-flower>, retouch poikilos -- see "images/CC0.txt"
+* [poikilos](https://github.com/poikilos) code and resources not mentioned above: resources created by poikilos are CC0 -- see "images/CC0.txt")
 * sphinx on excamera.com: http://excamera.com/sphinx/article-picolcd.html (61-line version of code that works with text model picoLCD 20x4 only)
 
 
