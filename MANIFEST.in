@@ -1,0 +1,2 @@
+include pypicolcd/images/*
+include pypicolcd/fonts/*
