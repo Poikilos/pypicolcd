@@ -35,8 +35,8 @@ def customDie(msg, exit_code=1):
 _LINES_MAX = 4
 
 
-def show_image(path, params={}, picolcd=None):
-    p = picolcd
+def show_image(path, params={}, destination=None):
+    p = destination
     if p is None:
         p = PicoLCD()
     if not os.path.isfile(image_path):
@@ -44,8 +44,8 @@ def show_image(path, params={}, picolcd=None):
     p.draw_image((x, y), image_path, brightness=1)
     return p
 
-def show_lines(lines, params={}, picolcd=None):
-    p = picolcd
+def show_lines(lines, params={}, destination=None):
+    p = destination
     if p is None:
         p = PicoLCD()
     if p.dc is None:
@@ -116,13 +116,13 @@ def main():
     image_path = settings.get("foreground")
 
     if image_path is not None:
-        show_image(image_path, picolcd=p)
+        show_image(image_path, destination=p)
 
-    show_lines(lines, params=settings, picolcd=p)
+    show_lines(lines, params=settings, destination=p)
 
     image_path = settings.get("foreground")
     if image_path is not None:
-        show_image(image_path, picolcd=p)
+        show_image(image_path, destination=p)
 
 
 if __name__ == "__main__":

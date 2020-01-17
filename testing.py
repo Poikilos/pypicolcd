@@ -19,26 +19,21 @@ from datetime import datetime
 import time
 import binascii
 try:
-    from picolcd import PicoLCD
+    from pypicolcd import PicoLCD
     try:
-        from picolcd import OUT_REPORT_CMD_DATA
-    except:
-        print("Missing OUT_REPORT_CMD_DATA")
+        from pypicolcd import OUT_REPORT_CMD_DATA
+    except ImportError:
+        raise ImportError("Missing OUT_REPORT_CMD_DATA")
     try:
-        from picolcd import OUT_REPORT_DATA  # by sphinx
-    except:
-        print("Missing OUT_REPORT_DATA")
-    try:
-        from picolcd import find_resource
-    except:
-        print("Missing find_resource")
+        from pypicolcd import OUT_REPORT_DATA  # by sphinx
+    except ImportError:
+        raise ImportError("Missing OUT_REPORT_DATA")
+    try ImportError:
+        from pypicolcd import find_resource
+    except ImportError:
+        raise ImportError("Missing find_resource")
 except ImportError:
-    print("requires picolcd.py such as from")
-    print("  http://excamera.com/sphinx/article-picolcd.html")
-    print("which requires pyusb")
-    print("such as via:")
-    print("  sudo pip install pyusb")
-    # only catch ImportError, so exceptions in picolcd will be shown
+    raise ImportError("pypicolcd is not present--try installing it via pip in a virtualenv to automatically get all dependencies--see README.md in pypicolcd")
 
 try:
     import tkinter as tk
@@ -196,7 +191,7 @@ else:
     error_text = tk.Text(root) # , text=error, justify=tk.LEFT)
     error_text.pack()
     error_text.insert(tk.INSERT, error)
-root.wm_title("picolcd testing by Poikilos")
+root.wm_title("pypicolcd testing by Poikilos")
 root.bind("<Button 1>", getorigin)
 
 l_frame = tk.Frame(root)

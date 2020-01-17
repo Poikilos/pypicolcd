@@ -1,6 +1,7 @@
 # pypicolcd
 <https://github.com/poikilos/pypicolcd>
 
+
 Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLCD class.
 ![kitten](https://github.com/poikilos/pypicolcd/raw/master/screenshot.jpg)
 
@@ -12,6 +13,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 * Fault-tolerant: draw anything beyond range of LCD and will not crash nor miss good parts
 * Image Dithering: draw color image, and it will automatically be dithered to 1-bit by luminosity (threshold is also possible)
 
+This module is different than pyusblcd, since that requires the (non-python) picoLCD driver and this module does not.
 
 ## Requirements
 - pypicolcd uses Python 3, and though has some Python 2 considerations, is not thoroughly tested on Python 2. Therefore, make sure virtualenv is Python 3 by default, otherwise follow a guide to use the Python 3 virtualenv (such as [Installing and using virtualenv with Python 3](https://help.dreamhost.com/hc/en-us/articles/115000695551-Installing-and-using-virtualenv-with-Python-3)).
@@ -64,14 +66,6 @@ deactivate
   * get_pixel only works for pixels created during the life of the PicoLCD object, since it gets pixels from the offscreen pixelbuffers
 
 
-## Changes
-(2018-01-26)
-* make example.py
-* (fix use of refresh_enable) make force_refresh_enable=True work where on=False
-* draw text
-* draw image with threshold OR dithering
-
-
 ## Known Issues
 * if possible, read state of buttons on the unit also via pyusb
 * add option to disconnect from the device so it can be used by other processes
@@ -87,6 +81,7 @@ deactivate
   * ilyessuti on pixnio: CC0 licensed kitten*.jpg (2017-12-21-14-52-48) <https://pixnio.com/fauna-animals/cats-and-kittens/field-grass-cute-summer-nature-cat-outdoor-flower>, retouch poikilos -- see "images/CC0.txt"
 * [poikilos](https://github.com/poikilos) code and resources not mentioned above: resources created by poikilos are CC0 -- see "images/CC0.txt")
 * sphinx on excamera.com: http://excamera.com/sphinx/article-picolcd.html (61-line version of code that works with text model picoLCD 20x4 only)
+  - Formerly, pypicolcd (before it was a module) required picolcd.py from http://excamera.com/sphinx/article-picolcd.html.
 
 
 ## Developer Notes

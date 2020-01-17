@@ -21,14 +21,6 @@ This is free software, and you are welcome to redistribute it
 under certain conditions; open LICENSE file in text editor for details.
 """
 
-font_meta = {}
-font_meta["press start"] = {}
-font_meta["press start"]["file"] = "prstartk.ttf"
-font_meta["press start"]["default_size"] = 6
-font_meta["ninepin"] = {}
-font_meta["ninepin"]["file"] = "ninepin.ttf"
-font_meta["ninepin"]["default_size"] = 8
-
 try:
     import usb
 except ImportError:
@@ -41,6 +33,7 @@ import sys
 import traceback
 import os
 import random
+import inspect
 
 from timeit import default_timer as best_timer
 
@@ -132,7 +125,7 @@ def get_pixel_color(canvas, x, y):
         if color != '':
             return color.upper()
     else:
-        print("[ picolcd.py ] WARNING in get_pixel_color: no color"
+        print("[ pypicolcd ] WARNING in get_pixel_color: no color"
               " at " + str((x, y)))
     return "WHITE"
 
@@ -143,12 +136,44 @@ def find_resource(path):
     in_module_path = os.path.join(my_path, path)
     if os.path.isfile(in_module_path):
         ret = in_module_path
+        # print("FOUND: '{}'".format(ret))
     elif os.path.isfile(os.path.abspath(path)):
         ret = os.path.abspath(path)
+        # print("FOUND: '{}'".format(ret))
     else:
         print("ERROR: resource is not present here or in"
               " '{}': '{}'".format(my_path, path))
     return ret
+
+font_meta = {}
+font_meta["ninepin"] = {}
+font_meta["ninepin"]["filename"] = "ninepin.ttf"
+font_meta["ninepin"]["default_size"] = 8
+font_meta["zephyrean"] = {}
+font_meta["zephyrean"]["filename"] = "zephyrea.ttf"
+font_meta["zephyrean"]["default_size"] = 8
+font_meta["zephyrean"]["note"] = "smallest 8pt readable font"
+font_meta["flottflott"] = {}
+font_meta["flottflott"]["filename"] = "Flottflott.ttf"
+font_meta["flottflott"]["default_size"] = 11
+font_meta["flottflott"]["note"] = "unreadable below font size 11"
+font_meta["press start"] = {}
+font_meta["press start"]["filename"] = "prstartk.ttf"
+font_meta["press start"]["default_size"] = 6
+font_meta["press start"]["note"] = "a pixel art font readable at 6pt"
+
+for name, meta in font_meta.items():
+    font_meta[name]["path"] = find_resource(
+        os.path.join("fonts", meta["filename"])
+    )
+    if font_meta[name]["path"] is None:
+        print("ERROR: missing '{}' (not in '{}')".format(
+            meta["filename"],
+            my_path
+        ))
+
+def get_font_meta(name):
+    return font_meta.get(name.lower())
 
 class PicoLCD:
 
@@ -159,13 +184,14 @@ class PicoLCD:
         self.change_enables = None
         self.handle = None
         self.verbose_enable = False
-        self.default_font_size = font_meta["ninepin"]["default_size"]
+        self.default_font = "ninepin"
+        self.default_font_size = font_meta[self.default_font]["default_size"]
         self._pos = (0, 0)
         self._f_cache = {}  # font cache
         self._s_cache = {}  # each character as stripes (pixel columns)
         self._im = None  # font rendering buffer
         self._d = None  # font rendering buffer Draw object
-        self.default_font_path = "fonts/ninepin.ttf"
+        # self.default_font_path = "fonts/ninepin.ttf"
         buses = usb.busses()
         this_idVendor = None
         this_idProduct = None
@@ -179,8 +205,7 @@ class PicoLCD:
                     self.dc = DC_DICT[str(device.idProduct)]
                     this_idVendor = device.idVendor
                     this_idProduct = device.idProduct
-                    print("[ picolcd ] (verbose message in __init__)"
-                          " found " + self.dc["name"])
+                    self.blab("found " + self.dc["name"])
         if self.dc is not None:
             self.change_enables = []
             for block_i in range(self.dc["blockrows"]):
@@ -217,7 +242,7 @@ class PicoLCD:
             try:
                 self.handle.claimInterface(0)
                 self.handle.setAltInterface(0)
-                # print("[ picolcd ] claimed interface 0")
+                # print("[ pypicolcd ] claimed interface 0")
             except usb.core.USBError:
                 self.dc = None
                 # 50 is a priority level where lower numbers are first
@@ -254,8 +279,8 @@ class PicoLCD:
                 view_traceback()
         else:
             if self.error is None:
-                self.error = ("ERROR in picolcd: Failed to find a known"
-                              " product ID connected")
+                self.error = ("ERROR: pypicolcd did not find a"
+                              " known product ID connected to USB.")
         if self.error is not None:
             print(self.error)
 
@@ -266,6 +291,17 @@ class PicoLCD:
         self._last_update_s = None
         self._fps_accumulated_time = 0.
         self._fps_accumulated_count = 0
+    
+    def blab(self, msg, where=None):
+        if self.verbose_enable:
+            w_msg = ""
+            if where is not None:
+                w_msg = " in " + where
+            else:
+                curframe = inspect.currentframe()
+                calframe = inspect.getouterframes(curframe, 2)
+                w_msg = " in " + calframe[1][3]
+            print("[ pypicolcd ] (verbose message" + w_msg + ") " + msg)
 
     def generate_fps(self):
         result = None
@@ -389,17 +425,13 @@ class PicoLCD:
                 threshold = .02
                 for_msg = (" (adjusted from .5 to acommodate edges"
                            " of blocks in ninepin font)")
-            if self.verbose_enable:
-                print("[ PicoLCD ] (verbose message in draw_text)"
-                      + "threshold was None so reverted to default"
+            self.blab("threshold was None so reverted to default"
                       + for_msg + ": "
                       + str(threshold))
 
         if font_path is None:
-            font_path = self.default_font_path
-            if self.verbose_enable:
-                print("[ PicoLCD ] (verbose message in draw_text)"
-                      + " reverted to default font '"
+            font_path = font_meta[self.default_font]["path"]
+            self.blab("reverted to default font '"
                       + font_path + "'")
             if not os.path.isfile(font_path):
                 print("[ PicoLCD ] ERROR in draw_text:"
@@ -441,7 +473,7 @@ class PicoLCD:
         # if x < 0 or y < 0 or x > dst_w or y > dst_h:
             # return False
         zone_width = dst_w / self.dc["zones"]
-        font_path = self.default_font_path
+        font_path = font_meta[self.default_font]["path"]
         font_size = self.default_font_size
         threshold = .5
         if self.dc["type"] != "graphics":
@@ -682,7 +714,7 @@ class PicoLCD:
             addr = {0: 0x80, 1: 0xc0, 2:0x94, 3:0xd4}[row] + col
             result = self.wr(bytes(0x94, 0x00, 0x01, 0x00, 0x64, addr))
             if result < 1:
-                print("[ picolcd ] ERROR: " + str(result)
+                print("[ pypicolcd ] ERROR: " + str(result)
                       + "byte(s) written for address")
             self.wr(bytes(OUT_REPORT_DATA, 0x01, 0x00, 0x01, len(text))
                     + text)
@@ -934,14 +966,12 @@ class PicoLCD:
         bit_i = y % self.dc["ppb"]
         byte_i = x % self.dc["block_size"]
         pixel = 1 << bit_i
-        # if self.verbose_enable:
-            # print("[ PicoLCD ] (verbose message in set_pixel)"
-                  # + " " + str((x,y)) + " results in"
-                  # + " framebuffer[" + str((fb_i)) + "]"
-                  # + " zone,block=" + str((zone_i, block_i))
-                  # + " byte=" + str(byte_i) + " bit=" + str(bit_i))
+        # self.blab(str((x,y)) + " results in"
+                    # + " framebuffer[" + str((fb_i)) + "]"
+                    # + " zone,block=" + str((zone_i, block_i))
+                    # + " byte=" + str(byte_i) + " bit=" + str(bit_i))
         if (fb_i < 0) or (fb_i >= len(self.framebuffers)):
-            print("[ PicoLCD ] ERROR in set_pixel: buffer "
+            print("[ PicoLCD ] ERROR in set_pixel at " + str(pos) + ": buffer "
                   + str(fb_i) + " does not exist in "
                   + str(len(self.framebuffers)) + "-len buffer list.")
             return 0
@@ -991,9 +1021,7 @@ class PicoLCD:
         bit_i = y % self.dc["ppb"]
         byte_i = x % self.dc["block_size"]
         pixel = dat_b
-        # if self.verbose_enable:
-            # print("[ PicoLCD ] (verbose message in set_pixel)"
-                  # + " " + str((x,y)) + " results in"
+        # self.blab(" " + str((x,y)) + " results in"
                   # + " framebuffer[" + str((fb_i)) + "]"
                   # + " zone,block=" + str((zone_i, block_i))
                   # + " byte=" + str(byte_i) + " bit=" + str(bit_i))
@@ -1054,5 +1082,5 @@ if __name__ == "__main__":
         y = pixel_y
     p.draw_text(y, 0, datetime.now().ctime()[:20])
     print("You can use this module like:")
-    print("  from picolcd import PicoLCD")
+    print("  from pypicolcd import PicoLCD")
     print("  p = PicoLCD()")
