@@ -289,6 +289,11 @@ class PicoLCD:
                     self.error += ("sudo usermod -a -G dialout " + un)
                 # print("[ PicoLCD ] ERROR--" + self.error + ": ")
                 # NOTE: self.error is shown further down.
+                self.error += ("\n\n")
+                self.error += ("* Connecting to a root hub or USB 2 or"
+                               "\n  earlier port may solve the issue if"
+                               "\n  " + un + " already has the"
+                               " permissions above.")
                 view_traceback()
         else:
             if self.error is None:
