@@ -5,11 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [git] - 2020-01-20
+### Added
+- Add a udev rules file that matches the one the program generates for a
+  picoLCD 256x64 Sideshow.
+
 ### Changed
 - Improve udev rule instructions
   - ATTRS, which checks parent devices, also works. ATTR does not check parent devices, but still works.
     - See <https://github.com/JamesTheAwesomeDude/pyPicoLCD/blob/full-reimplimentation/60-lcd.rules>
-
+- Handle diconnects (see README.md).
+- Fix backlight level method (and rename to `set_backlight`).
+- Fix flash method.
+- Allow sending bytestrings of arbitrary length using testing.pyw.
 
 ## [git] - 2020-01-17
 ### Added

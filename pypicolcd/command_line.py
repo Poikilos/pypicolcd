@@ -88,7 +88,8 @@ def show_lines(lines, params={}, destination=None):
 def main():
     settings = {}
     lines = []
-    allowed_names = ["background", "foreground"]
+    allowed_names = ["background", "foreground", "brightness"]
+    allowed_commands = ["clear", "flash", "push"]
     if len(sys.argv) < 1:
         sys.stdout.write("You didn't provide any parameters, so there is nothing to do.")
         return 1
@@ -98,25 +99,27 @@ def main():
             if (len(arg) == 2):
                 customDie("There was a blank argument")
             arg_parts = arg[2:].split("=")
-            arg_n = arg_parts[0]
-            arg_v = None
+            name = arg_parts[0]
+            value = None
             if len(arg_parts) > 1:
-                arg_v = arg_parts[1]
-                # settings[arg_n] = arg_v
-                if len(argv) == 0:
+                value = arg_parts[1]
+                # settings[name] = value
+                if len(value) == 0:
                     customDie("There was a blank value: " + arg)
             else:
-                # settings[arg_n] = True
-                arg_v = True
+                # settings[name] = True
+                value = True
 
             if len(arg_parts) > 2:
                 customDie("There was more than one '=' in {}".format(arg))
-            if arg_n == "clear":
-                settings[arg_n] = to_bool(arg_v)
-            elif arg_n in allowed_names:
-                settings[arg_n] = arg_v
+            if name == "clear":
+                settings[name] = to_bool(value)
+            elif name in allowed_names:
+                settings[name] = value
+            elif name in allowed_commands:
+                settings[name] = True
             else:
-                customDie("{} is an unknown option (name '{}', value '{}').".format(arg, arg_n, arg_v))
+                customDie("{} is an unknown option (name '{}', value '{}').".format(arg, name, value))
         else:
             lines.append(arg)
     p = PicoLCD()
@@ -124,17 +127,31 @@ def main():
     if settings.get("clear") is True:
         p.clear()
 
+    brightness = settings.get("brightness")
+    if brightness is not None:
+        b = int(brightness)
+        print("* setting brightness to {}...".format(b))
+        p.set_backlight(b)
+
     image_path = settings.get("foreground")
 
     if image_path is not None:
         show_image(image_path, destination=p)
 
-    show_lines(lines, params=settings, destination=p)
+    if settings.get("push") is True:
+        for line in lines:
+            p.push_text(line + " ")
+    else:
+        show_lines(lines, params=settings, destination=p)
 
     image_path = settings.get("foreground")
     if image_path is not None:
         show_image(image_path, destination=p)
 
+    if settings.get("flash") is True:
+        p.flash()
+        p.flash()
+        p.flash()
 
 if __name__ == "__main__":
     main()

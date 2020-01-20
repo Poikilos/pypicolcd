@@ -32,8 +32,11 @@ try:
         from pypicolcd import find_resource
     except ImportError:
         raise ImportError("Missing find_resource")
-except ImportError:
-    raise ImportError("pypicolcd is not present--try installing it via pip in a virtualenv to automatically get all dependencies--see README.md in pypicolcd")
+except ModuleNotFoundError as e:
+    if "pypicolcd requires pyusb" in str(e):
+        raise e
+    else:
+        raise ModuleNotFoundError("pypicolcd is not present--try installing it via pip in a virtualenv to automatically get all dependencies--see README.md in pypicolcd")
 
 try:
     import tkinter as tk
@@ -59,7 +62,6 @@ def local_resource(path):
         raise FileNotFoundError("ERROR: resource is not present here or"
                                 " in '{}': '{}'".format(my_path, path))
     return ret
-
 p = None
 cmd_len = None
 data_len = 0x01
@@ -118,10 +120,12 @@ def fill():
     for y in range(p.dc["height"]):
         for x in range(p.dc["width"]):
             # if x < y:
-            set_canvas_pixel((x, y))
             p.set_pixel((x, y), True)
             # else:
                 # p.set_pixel((x, y), False)
+            if p.preview_flag:
+                clear_canvas_and_warn()
+            set_canvas_pixel((x, y))
 
 def draw_pattern():
     for y in range(64):
@@ -129,18 +133,22 @@ def draw_pattern():
         # x = 32
         # if True:
         for x in range(128):
-            set_canvas_pixel((x, y))
             p.set_pixel((x, y), True)
+            if p.preview_flag:
+                clear_canvas_and_warn()
+            set_canvas_pixel((x, y))
 
 def draw_southwest_arrow():
     for y in range(64):
         for x in range(64):
             refresh_enable = False
             if x < y:
-                set_canvas_pixel((x, y))
                 p.set_pixel((x, y), True, refresh_enable=refresh_enable)
             # else:
                 # p.set_pixel((x, y), False)
+                if p.preview_flag:
+                    clear_canvas_and_warn()
+                set_canvas_pixel((x, y))
     # p.invalidate(zones=[0,1])  # was invalidated automatically anyway
     p.refresh()
 
@@ -153,8 +161,10 @@ def getorigin(eventorigin):
     x0 = eventorigin.x
     y0 = eventorigin.y
     if draw_enable:
-        set_canvas_pixel((x0, y0))
         p.set_pixel((x0, y0), True)
+        if p.preview_flag:
+            clear_canvas_and_warn()
+        set_canvas_pixel((x0, y0))
         # p.set_pixel((x0, y0), True)
         # p.set_pixel((x0, y0), True)
         count += 1
@@ -164,7 +174,7 @@ def getorigin(eventorigin):
 p = PicoLCD(verbose_enable=True)
 if p.dc is None:
     print("* Device initialization is not complete.")
-    exit(1)
+
 p.verbose_enable = True
 
 print("Generating form")
@@ -172,6 +182,8 @@ root = None
 try:
     root = tk.Tk()
 except:
+    # such as `_tkinter.TclError: no display name and no $DISPLAY
+    # environment variable`
     print("FATAL ERROR: Cannot use tkinter from terminal")
     exit(1)
 # relief='sunken', borderwidth=2, bg='white', width=256, height=500
@@ -194,6 +206,7 @@ else:
     error_text = tk.Text(root) # , text=error, justify=tk.LEFT)
     error_text.pack()
     error_text.insert(tk.INSERT, error)
+
 root.wm_title("pypicolcd testing by Poikilos")
 root.bind("<Button 1>", getorigin)
 
@@ -203,13 +216,23 @@ r_frame = tk.Frame(root)
 r_frame.pack(expand=True, fill='both', side='right')
 this_root = l_frame
 
-def clear_click(clear_source_enable=True):
-    if clear_source_enable:
-        p.clear()
+def clear_canvas():
     canvas.delete("all")
     canvas.create_rectangle(
         0, 0, p.dc["width"], p.dc["height"],
         outline="#fff", fill="#fff")
+    p.set_preview_flag(False)
+
+def clear_canvas_and_warn():
+    print("* WARNING: The device reset, so the"
+          " preview is being cleared...")
+    clear_canvas()
+
+
+def clear_click(clear_source_enable=True):
+    if clear_source_enable:
+        p.clear()
+    clear_canvas()
 
 clear_btn = tk.Button(this_root, text="Clear LCD",
                       command=clear_click)
@@ -220,6 +243,7 @@ this_root = r_frame
 draw_enable_btn = None
 draw_enable_svar = tk.StringVar()
 draw_enable_svar.set("Enable Drawing (above)")
+
 def enable_draw_click():
     global draw_enable
     global draw_enable_svar
@@ -280,6 +304,8 @@ def draw_image_click():
         this_t = float(threshold_entry.get().strip())
     p.draw_image((x,y), find_resource("images/kitten.jpg"), threshold=this_t)
     # p.draw_image((0,0), find_resource("images/kitten.jpg"))
+    if p.preview_flag:
+        clear_canvas_and_warn()
     draw_from_source()
 
 text_pos_x_entry = None
@@ -420,7 +446,19 @@ def load_short_btn_click():
     load_cmd(cmd4)
 
 def run_click():
+    global cmd_len
     this_data_len = 1
+    if cmd_len is None:
+        cmd_len = 0
+        custom_len_cmd = []
+        for i in range(len(entries)):
+            e = entries[i]
+            if len(e.get().strip()) > 0:
+                cmd_len += 1
+            else:
+                break
+        # load_cmd(custom_len_cmd)
+
     if cmd_len is not None:
         cmd = []
         is_ok = True
@@ -453,7 +491,7 @@ def run_click():
               " Load an example first.")
 
 
-run_btn = tk.Button(this_root, text="Send 0 Bytes",
+run_btn = tk.Button(this_root, text="Send Bytes",
                       command=run_click)
 run_btn.pack(fill='x')
 load_short_btn = tk.Button(this_root, text="Load 6-byte cmd",
@@ -474,7 +512,7 @@ load_long_btn.pack(fill='x')
 #
 # p.clear(val=0x0F, data_len=32, line_len=8, chip_count=4)
 # p.flash()
-# p.backlight(128)
+# p.set_backlight(128)
 # clock:
 # while True:
     # p.draw_text(3, 0, datetime.now().ctime()[:20])

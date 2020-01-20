@@ -67,8 +67,8 @@ picoLCD_256x64_msg = dev_permission_msg.format(
 
 try:
     import usb
-except ImportError:
-    raise ImportError("pypicolcd requires pyusb")
+except ModuleNotFoundError:
+    raise ModuleNotFoundError("pypicolcd requires pyusb (see \"Install\" in README.md)")
 
 import time
 import sys
@@ -221,11 +221,10 @@ def get_font_meta(name):
 class PicoLCD:
 
     def __init__(self, verbose_enable=False):
-        self.dc = None  # device characteristics
+        self._backlight_level = 0xFF
         self.framebuffer = None
         self.framebuffers = None
         self.change_enables = None
-        self.handle = None
         self.verbose_enable = verbose_enable
         self.default_font = "ninepin"
         self.default_font_size = font_meta[self.default_font]["default_size"]
@@ -235,6 +234,19 @@ class PicoLCD:
         self._im = None  # font rendering buffer
         self._d = None  # font rendering buffer Draw object
         # self.default_font_path = "fonts/ninepin.ttf"
+        self.connect()
+        self.preview_flag = False
+        self._fps_interval = .4
+        self._average_fps = None
+        self._fps_last_frame_tick = None
+        self._actual_frame_interval = None
+        self._last_update_s = None
+        self._fps_accumulated_time = 0.
+        self._fps_accumulated_count = 0
+
+    def connect(self):
+        self.dc = None  # device characteristics
+        self.handle = None
         buses = usb.busses()
         this_idVendor = None
         this_idProduct = None
@@ -332,14 +344,10 @@ class PicoLCD:
         if self.error is not None:
             print("* pypicolcd found {} known device(s)".format(found_count))
             print(self.error)
-
-        self._fps_interval = .4
-        self._average_fps = None
-        self._fps_last_frame_tick = None
-        self._actual_frame_interval = None
-        self._last_update_s = None
-        self._fps_accumulated_time = 0.
-        self._fps_accumulated_count = 0
+        if self.dc is not None:
+            self.clear()
+        self.set_backlight(self._backlight_level)
+        return self.dc is not None
 
     def blab(self, msg, where=None):
         if self.verbose_enable:
@@ -417,7 +425,16 @@ class PicoLCD:
     def wr(self, m):
         # interruptWrite(endpoint, buffer, timeout)
         # returns bytes written
-        return self.handle.interruptWrite(usb.ENDPOINT_OUT + 1, m, 1000)
+        try:
+            return self.handle.interruptWrite(usb.ENDPOINT_OUT + 1, m, 1000)
+        except usb.core.USBError:
+            print("* attemping to reconnect...")
+            if self.connect():
+                self.reset_framebuffer()
+                self.invalidate()
+                self.refresh()
+                return self.handle.interruptWrite(usb.ENDPOINT_OUT + 1, m, 1000)
+        return 0
 
     # Transfer row src_br_i to dst_br_i then erase row src_br_i
     # (for graphics type models only!).
@@ -1018,6 +1035,10 @@ class PicoLCD:
         x, y = pos
         if force_refresh_enable:
             refresh_enable=True
+        if self.dc is None:
+            print("* reconnecting...")
+            if not self.connect():
+                raise RuntimeError("The device is not connected.")
         dst_w = self.dc["width"]
         dst_h = self.dc["height"]
         # if x < 0 or y < 0 or x > dst_w or y > dst_h:
@@ -1066,10 +1087,17 @@ class PicoLCD:
             # print(msg + " " + str((zone_i, block_i)))
             self.refresh_block(zone_i, block_i, zone_stop_x=byte_i+1)
 
+    def set_preview_flag(self, dirty):
+        self.preview_flag = dirty
+
     # dat_b: one byte containing (8) 1-bit pixels VERTICALLY
     def set_byte(self, pos, dat_b, refresh_enable=True,
                  force_refresh_enable=False):
         # NOTE: one byte covers 8 pixels on y axis from landscape view
+        if self.dc is None:
+            print("* reconnecting...")
+            if not self.connect():
+                raise RuntimeError("The device is not connected.")
         x, y = pos
         if force_refresh_enable:
             refresh_enable=True
@@ -1115,17 +1143,49 @@ class PicoLCD:
         self.reset_framebuffer()
         self.invalidate()
         self.refresh()
+        self.preview_flag = True
 
-    def backlight(self, brightness):
-        self.wr(bytes(OUT_REPORT_LCD_BACKLIGHT, brightness))
+    def set_backlight(self, level):
+        # NOTE: 1-1000 , default 800 according to mhswa Aug 27, 2018:
+        # https://forum.netgate.com/topic/134151/lcd4linux-picolcd/8
+        try:
+            b = int(level)
+        except TypeError:
+            raise TypeError("The level must be an integer 0-255")
+        if b != level:
+            raise TypeError("The level must be an integer 0-255")
+        if (b >= 0) and (b <= 255):
+            self.wr([OUT_REPORT_LCD_BACKLIGHT, b])
+            self._backlight_level = b
+        else:
+            raise ValueError("The level must be 0-255")
+
 
     def leds(self, state):
-        self.wr(bytes(OUT_REPORT_LED_STATE, state))
+        self.wr([OUT_REPORT_LED_STATE, state])
 
     def flash(self):
-        for brightness in list(range(20, 0, -1)) + list(range(0, 21)):
-            self.backlight(brightness)
+        prev_level = self._backlight_level
+        # for level in (list(range(20, 0, -1)) + list(range(0, 21))):
+        standard_step = 10
+        step = standard_step
+        flash_max = 255
+        flash_min = 0
+        if flash_min < prev_level:
+            # This is always True unless flash_min is not 0
+            step *= -1
+        levels = list(range(prev_level, flash_min, step))
+        levels += list(range(flash_min, flash_max, standard_step))
+        step = standard_step
+        if prev_level < flash_max:
+            # This is always True unless flash_max is not 255
+            step *= -1
+        levels += list(range(flash_max, prev_level, step))
+
+        for level in levels:
+            self.set_backlight(level)
             time.sleep(.01)
+        self.set_backlight(prev_level)
 
 if __name__ == "__main__":
     from datetime import datetime

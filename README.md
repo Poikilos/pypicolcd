@@ -15,7 +15,7 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 
 This module is different than pyusblcd, since that requires the (non-Python) picoLCD driver and this module does not.
 
-## Requirements
+## Install
 - pypicolcd uses Python 3, and though has some Python 2 considerations, is not thoroughly tested on Python 2. Therefore, make sure virtualenv is Python 3 by default, otherwise follow a guide to use the Python 3 virtualenv (such as [Installing and using virtualenv with Python 3](https://help.dreamhost.com/hc/en-us/articles/115000695551-Installing-and-using-virtualenv-with-Python-3)).
 - Install via pip to get all dependencies:
 ```bash
@@ -67,9 +67,16 @@ deactivate
 
 
 ## Known Issues
-* if possible, read state of buttons on the unit also via pyusb
-* add option to disconnect from the device so it can be used by other processes
+- [ ] If possible, read the state of buttons on the unit (also via pyusb).
+- [ ] Add an option to disconnect from the device so it can be used by other processes.
 
+## Troubleshooting
+- Detecting resets (normally from the device being disconnected) is
+  only possible if you try to write while the device is disconnected.
+  Otherwise, the framebuffer (and canvas in testing.pyw) will remain
+  incorrect until you call `clear()` on the PicoLCD instance (certain
+  pixels involved in the command will not change if they would match the
+  existing framebuffer--this is the expected behavior).
 
 ## Authors
 * resources from external sources:
