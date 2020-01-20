@@ -139,8 +139,11 @@ def main():
         show_image(image_path, destination=p)
 
     if settings.get("push") is True:
-        for line in lines:
-            p.push_text(line + " ")
+        all_text = " ".join(lines)
+        print("* showing {}...".format(all_text))
+        p.push_text(all_text)
+        # for line in lines:
+            # p.push_text(line)
     else:
         show_lines(lines, params=settings, destination=p)
 

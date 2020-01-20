@@ -563,13 +563,17 @@ class PicoLCD:
                 ImageFont.truetype(font_path, font_size)
         # font_path, font_size, threshold = \
             # self._cache_font(font_path, font_size, threshold)
-        this_sc = None
-        generate_enable = False
+        this_sc = None  # the stripe cache for the current
+        # [font][size][character]
         if font_path not in sc:
             sc[font_path] = {}
         if fss not in sc[font_path]:
             sc[font_path][fss] = {}
+
         for c in text:
+            generate_enable = False
+            this_sc = None
+            this_spacing_x = spacing_x
             if abs_x + 5 > dst_w:
                 abs_x = 0
                 abs_y += 8
@@ -593,25 +597,31 @@ class PicoLCD:
                     abs_y = 0
 
             if c not in sc[font_path][fss]:
-                sc[font_path][fss][c] = []
+                try:
+                    sc[font_path][fss][c] = []
+                except TypeError as e:
+                    print("font_path:'{}'; fss:'{}'; c:'{}'".format(font_path, fss, c))
+                    raise e
                 this_sc = sc[font_path][fss][c]
                 generate_enable = True
+                # print("generate_enable: {}; len(this_sc): {}".format(generate_enable, len(this_sc)))
             if generate_enable:
                 fnt = fc[font_path][fss]
-                # asdf
                 if self._d is None:
                     self._d = ImageDraw.Draw(self._im)
-                if c != " ":
+                if len(c.strip()) > 0:
                     self._d.text((0, 0), c, font=fnt,
                                  fill=(255,255,255,255))
                     start_enable = False
                     x = 0
                     im = self._im
-                    while x < 256:
+                    # print("* generating '{}'...".format(c))
+                    while x < 256:  # or until end of character
                         stripe_enable = False
-                        stripe = 0x00  # 1-byte vertical stripe of 8 pixels
+                        stripe = 0x00  # 1-byte vertical stripe of 8px
                         for y in range(8):
                             r, g, b, a = im.getpixel((x, y))
+                            # print("  {} {}".format(x, im.getpixel((x, y))))
                             alpha = float(a) / 255.
                             if alpha > threshold:
                                 stripe_enable = True
@@ -624,15 +634,24 @@ class PicoLCD:
                                 # found end of letter
                                 break
                         x += 1
-                    self._d.rectangle((0, 0, 8, 8),
+                    self._d.rectangle((0, 0, x+1, 8),
                                       fill=(255,255,255,0))
-
+                    # self._im.putalpha(0)
                 else:
                     # " " (space)
-                    sc[font_path][fss] = [0, 0, 0]  # 3px wide--since
-                                                    # average letter ~ 6px
+                    space_w = 3  # less than width of letters (~6px)
+
+                    # NOTE: append since this_sc is a reference!
+                    # this_sc.append([0]*space_w)
+
+                    sc[font_path][fss][c] = [0]*space_w
+                    # sc[font_path][fss][c] = this_sc
+                    this_sc = sc[font_path][fss][c]
+                    # x += space_w
+                print("* '{}' became {} wide...".format(c, len(this_sc)))
             else:
                 this_sc = sc[font_path][fss][c]
+            x = None
             zones = []
             block_i = int(abs_y/self.dc["blockrows"])
 
