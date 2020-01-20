@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
+## [git] - 2020-01-20
+### Changed
+- Improve udev rule instructions
+  - ATTRS, which checks parent devices, also works. ATTR does not check parent devices, but still works.
+    - See <https://github.com/JamesTheAwesomeDude/pyPicoLCD/blob/full-reimplimentation/60-lcd.rules>
+
+
 ## [git] - 2020-01-17
 ### Added
 - The pip install now includes the necessary data files (fonts and
@@ -13,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - The pip install now works properly, and imports work properly.
 - The module name is now consistent (pypicolcd).
 - Old changes from the README.md are now in this file.
+
 
 ## [git] - 2020-01-15
 ### Added

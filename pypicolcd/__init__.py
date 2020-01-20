@@ -21,6 +21,50 @@ This is free software, and you are welcome to redistribute it
 under certain conditions; open LICENSE file in text editor for details.
 """
 
+# See https://linuxconfig.org/tutorial-on-how-to-write-basic-udev-rules-in-linux
+# NOTE: double curly brace becomes literal (single):
+dev_permission_msg = """
+{user} must have root access or be given permission to manage
+device id {device_id} (hex {device_hex}) via a udev rule file such as
+/etc/udev/rules.d/50-picoUSB{device_hex}.rules
+  * containing:
+
+SUBSYSTEM!="usb_device",
+ACTION!="add", GOTO="datalogger_rules_end"
+ATTR{{idVendor}}=="{vendor_hex}", ATTR{{idProduct}}=="{device_hex}", SYMLINK+="datalogger"
+MODE="0666", OWNER="{user}", GROUP="root"
+LABEL="datalogger_rules_end"
+
+  * or for OLDER systems:
+
+SUBSYSTEM !="usb_device",
+ACTION !="add", GOTO="datalogger_rules_end"
+SYSFS{{idVendor}}=="{vendor_hex}", SYSFS{{idProduct}}=="{device_hex}", SYMLINK+="datalogger"
+MODE="0666", OWNER="{user}", GROUP="root"
+LABEL="datalogger_rules_end"
+
+  * debug via:\n"
+    udevadm test /etc/udev/rules.d/50-picoUSBc002.conf
+
+* Then reload rules:
+  udevadm control --reload-rules
+  udevadm trigger
+
+* Then you must unplug the device!
+
+* However, on some systems, the following may work:
+  sudo usermod -a -G dialout {user}
+  #- You must log out and log in after that.
+
+"""
+picoLCD_256x64_msg = dev_permission_msg.format(
+    user="?",
+    device_id="?",
+    device_hex="c002",
+    vendor_hex="04d8"
+)
+
+
 try:
     import usb
 except ImportError:
@@ -84,32 +128,33 @@ height = 4 # can also be 2
 ids = [ 0xc001, 0xc002 ]
 
 DC_DICT = {}  # devices' characteristics dicts
-this_dc = {}
-this_dc["type"] = "text"
-this_dc["name"] = "picoLCD 20x4"
-this_dc["width"] = 20
-this_dc["height"] = 4  # or 2, but that Product ID is unknown
-this_dc["blockrows"] = 1
-this_dc["zones"] = 1
-this_dc["block_size"] = 80
-# this_dc["chip_orientation"] = "landscape"
-DC_DICT[str(0xc001)] = this_dc
-this_dc = {}
-this_dc["type"] = "graphics"
-this_dc["name"] = "picoLCD 256x64"
-# this_dc["chip_orientation"] = "portrait"
-this_dc["ppb"] = 8  # VERTICAL pixels per byte
-this_dc["width"] = 256
-this_dc["height"] = 64
-this_dc["blockrows"] = 8
-this_dc["zones"] = 8
-this_dc["block_size"] = 32 # ok since 8x8x32 == 256*(64/8) == 2048
-this_dc["inverted"] = 1  # 1 as per official driver
+tmp_dc = {}
+tmp_dc["type"] = "text"
+tmp_dc["name"] = "picoLCD 20x4"
+tmp_dc["width"] = 20
+tmp_dc["height"] = 4  # or 2, but that Product ID is unknown
+tmp_dc["blockrows"] = 1
+tmp_dc["zones"] = 1
+tmp_dc["block_size"] = 80
+# tmp_dc["chip_orientation"] = "landscape"
+DC_DICT[str(0xc001)] = tmp_dc
+tmp_dc = {}
+tmp_dc["type"] = "graphics"
+tmp_dc["name"] = "picoLCD 256x64"
+# tmp_dc["chip_orientation"] = "portrait"
+tmp_dc["ppb"] = 8  # VERTICAL pixels per byte
+tmp_dc["width"] = 256
+tmp_dc["height"] = 64
+tmp_dc["blockrows"] = 8
+tmp_dc["zones"] = 8
+tmp_dc["block_size"] = 32 # ok since 8x8x32 == 256*(64/8) == 2048
+tmp_dc["inverted"] = 1  # 1 as per official driver
                          # /picoLCDGraphic/Configs/lcd4linux.conf
-this_dc["chip_size"] = 64 * (64 / this_dc["ppb"])  # 64x64 pixels,
+tmp_dc["chip_size"] = 64 * (64 / tmp_dc["ppb"])  # 64x64 pixels,
                                                    # but 1-bit
-this_dc["chip_count"] = 4
-DC_DICT[str(0xc002)] = this_dc
+tmp_dc["chip_count"] = 4
+DC_DICT[str(0xc002)] = tmp_dc
+tmp_dc = None
 
 def get_pixel_color(canvas, x, y):
     # this function is useless, since doesn't work for anything but
@@ -175,13 +220,13 @@ def get_font_meta(name):
 
 class PicoLCD:
 
-    def __init__(self):
+    def __init__(self, verbose_enable=False):
         self.dc = None  # device characteristics
         self.framebuffer = None
         self.framebuffers = None
         self.change_enables = None
         self.handle = None
-        self.verbose_enable = False
+        self.verbose_enable = verbose_enable
         self.default_font = "ninepin"
         self.default_font_size = font_meta[self.default_font]["default_size"]
         self._pos = (0, 0)
@@ -196,6 +241,7 @@ class PicoLCD:
         self.error = None
         this_device = None
         found_count = 0
+        self.blab("* Searching USB buses...")
         for bus in buses:
             for device in bus.devices:
                 if device.idVendor == 0x04d8 and \
@@ -205,7 +251,7 @@ class PicoLCD:
                     self.dc = DC_DICT[str(device.idProduct)]
                     this_idVendor = device.idVendor
                     this_idProduct = device.idProduct
-                    self.blab("found " + self.dc["name"])
+                    self.blab("  * found " + self.dc["name"])
                     found_count += 1
         if self.dc is not None:
             self.change_enables = []
@@ -264,36 +310,20 @@ class PicoLCD:
                     self.error += ("\n  You are root, so this shouldn't"
                                    " happen.")
                 else:
-                    self.error += (un + " must have root access or be"
-                                   + " given permission to manage"
-                                   + " device id"
-                                   + idp_i_s + " (hex " + idp_s + ")"
-                                   + " via a udev rule file such as ")
-                    self.error += (" /etc/udev/rules.d/50-picoUSB"
-                                   + idp_s + ".conf, for example:")
-                    self.error += (
-                        "\n" + 'SUBSYSTEM !="usb_device",'
-                        + ' ACTION !="add", GOTO="datalogger_rules_end"')
-                    self.error += (
-                        "\n" + 'SYSFS{idVendor} =="' + idv_s
-                        + '", SYSFS{idProduct} =="' + idp_s
-                        + '", SYMLINK+="datalogger"')
-                    self.error += (
-                        "\n" + 'MODE="0666", OWNER="' + un
-                        + '", GROUP="root"')
-                    self.error += (
-                        "\n" + 'LABEL="datalogger_rules_end"')
-                    self.error += ("\n\n")
-                    self.error += ("* However, on some systems, the"
-                                   " following may work:\n")
-                    self.error += ("sudo usermod -a -G dialout " + un)
-                # print("[ PicoLCD ] ERROR--" + self.error + ": ")
-                # NOTE: self.error is shown further down.
+                    self.error = dev_permission_msg.format(
+                        user=un,
+                        device_id=idp_i_s,
+                        device_hex=idp_s,
+                        vendor_hex=idv_s
+                    )
                 self.error += ("\n\n")
                 self.error += ("* Connecting to a root hub or USB 2 or"
                                "\n  earlier port may solve the issue if"
-                               "\n  " + un + " already has the"
-                               " permissions above.")
+                               "\n  " + un + " already has the correct"
+                               " permissions to the device.")
+
+                # print("[ PicoLCD ] ERROR--" + self.error + ": ")
+                # NOTE: self.error is shown further down.
                 view_traceback()
         else:
             if self.error is None:

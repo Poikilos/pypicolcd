@@ -161,7 +161,7 @@ def getorigin(eventorigin):
         print("[ testing ] " + str(count) + " getorigin "
               + str(x0) + "," + str(y0))
 
-p = PicoLCD()
+p = PicoLCD(verbose_enable=True)
 if p.dc is None:
     print("* Device initialization is not complete.")
     exit(1)
