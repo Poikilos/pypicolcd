@@ -9,6 +9,13 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Create a server so that the buffer remains the same for multiple
   programs and `lcd-cli` calls.
+- Allow setting font via `lcd-cli` using `--font=` argument.
+
+### Changed
+- Clean up Draw objects for fonts (resolves issue #1 core dump in
+  `draw_text` presumably).
+  - This may introduce some latency, but only the first time a
+    character is used during the entire run of the framebuffer server.
 
 
 ## [git] - 2020-01-19

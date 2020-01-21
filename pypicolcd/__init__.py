@@ -26,7 +26,7 @@ under certain conditions; open LICENSE file in text editor for details.
 dev_permission_msg = """
 {user} must have root access or be given permission to manage
 device id {device_id} (hex {device_hex}) via a udev rule file such as
-/etc/udev/rules.d/50-picoUSB{device_hex}.rules
+/etc/udev/rules.d/50-picoUSB-{device_hex}.rules
   * containing:
 
 SUBSYSTEM!="usb_device",
@@ -44,7 +44,7 @@ MODE="0666", OWNER="{user}", GROUP="root"
 LABEL="datalogger_rules_end"
 
   * debug via:\n"
-    udevadm test /etc/udev/rules.d/50-picoUSBc002.conf
+    udevadm test /etc/udev/rules.d/50-picoUSB-{device_hex}.rules
 
 * Then reload rules:
   udevadm control --reload-rules
@@ -225,7 +225,6 @@ def get_font_meta(name):
     return font_meta.get(name.lower())
 
 
-
 class PicoLCD:
 
     def __init__(self, verbose_enable=False):
@@ -240,7 +239,6 @@ class PicoLCD:
         self._f_cache = {}  # font cache
         self._s_cache = {}  # each character as stripes (pixel columns)
         self._im = None  # font rendering buffer
-        self._d = None  # font rendering buffer Draw object
         # self.default_font_path = "fonts/ninepin.ttf"
         self.connect()
         self.preview_flag = False
@@ -612,48 +610,56 @@ class PicoLCD:
                 generate_enable = True
                 # print("generate_enable: {}; len(this_sc): {}".format(generate_enable, len(this_sc)))
             if generate_enable:
-                fnt = fc[font_path][fss]
-                if self._d is None:
-                    self._d = ImageDraw.Draw(self._im)
-                if len(c.strip()) > 0:
-                    self._d.text((0, 0), c, font=fnt,
-                                 fill=(255,255,255,255))
-                    start_enable = False
-                    x = 0
-                    im = self._im
-                    # print("* generating '{}'...".format(c))
-                    while x < 256:  # or until end of character
-                        stripe_enable = False
-                        stripe = 0x00  # 1-byte vertical stripe of 8px
-                        for y in range(8):
-                            r, g, b, a = im.getpixel((x, y))
-                            # print("  {} {}".format(x, im.getpixel((x, y))))
-                            alpha = float(a) / 255.
-                            if alpha > threshold:
-                                stripe_enable = True
-                                stripe |= (1 << y)
-                        if stripe_enable:
-                            start_enable = True
-                            this_sc.append(stripe)
-                        else:
-                            if start_enable:
-                                # found end of letter
-                                break
-                        x += 1
-                    self._d.rectangle((0, 0, x+1, 8),
-                                      fill=(255,255,255,0))
-                    # self._im.putalpha(0)
-                else:
-                    # " " (space)
-                    space_w = 3  # less than width of letters (~6px)
+                _d = ImageDraw.Draw(self._im)
+                try:
+                    fnt = fc[font_path][fss]
+                    # if _d is None:
+                        # _d = ImageDraw.Draw(self._im)
+                    if len(c.strip()) > 0:
+                        _d.text((0, 0), c, font=fnt,
+                                fill=(255,255,255,255))
+                        start_enable = False
+                        x = 0
+                        im = self._im
+                        # print("* generating '{}'...".format(c))
+                        while x < 256:  # or until end of character
+                            stripe_enable = False
+                            stripe = 0x00  # 1-byte vertical stripe of 8px
+                            for y in range(8):
+                                r, g, b, a = im.getpixel((x, y))
+                                # print("  {} {}".format(x, im.getpixel((x, y))))
+                                alpha = float(a) / 255.
+                                if alpha > threshold:
+                                    stripe_enable = True
+                                    stripe |= (1 << y)
+                            if stripe_enable:
+                                start_enable = True
+                                this_sc.append(stripe)
+                            else:
+                                if start_enable:
+                                    # found end of letter
+                                    break
+                            x += 1
+                        _d.rectangle((0, 0, x+1, 8),
+                                     fill=(255,255,255,0))
+                        # self._im.putalpha(0)
+                    else:
+                        # " " (space)
+                        space_w = 3  # less than width of letters (~6px)
 
-                    # NOTE: append since this_sc is a reference!
-                    # this_sc.append([0]*space_w)
+                        # NOTE: append since this_sc is a reference!
+                        # this_sc.append([0]*space_w)
 
-                    sc[font_path][fss][c] = [0]*space_w
-                    # sc[font_path][fss][c] = this_sc
-                    this_sc = sc[font_path][fss][c]
-                    # x += space_w
+                        sc[font_path][fss][c] = [0]*space_w
+                        # sc[font_path][fss][c] = this_sc
+                        this_sc = sc[font_path][fss][c]
+                        # x += space_w
+                except Exception as e:
+                    raise e
+                finally:
+                    if _d is not None:
+                        del _d
+                        _d = None
                 # print("* '{}' became {} wide...".format(c, len(this_sc)))
             else:
                 this_sc = sc[font_path][fss][c]
@@ -808,62 +814,77 @@ class PicoLCD:
             minimums = [size[0], size[1]]
             maximums = [0, 0]
             if erase_rect is not None:
+                self.blab("* drawing erase_rect")
                 self.draw_rect(erase_rect, False)
             if self._im is None:
+                self.blab("* creating _im font buffer")
                 self._im = Image.new('RGBA', size, (255,255,255,0))
             fnt = self._f_cache[font_path][str(font_size)]
-            if self._d is None:
-                self._d = ImageDraw.Draw(self._im)
-            self._d.text(pos, text, font=fnt, fill=(255,255,255,255))
-            pos_list = []
-            for src_y in range(size[1]):
-                if erase_rect is None:
-                    for src_x in range(size[0]):
-                        dest_x, dest_y = src_x, src_y
-                        r, g, b, a = self._im.getpixel((src_x, src_y))
-                        alpha = float(a) / 255.
-                        if alpha >= threshold:
-                            on_count += 1  # for debugging only
-                            if erase_behind_enable:
-                                if dest_x > maximums[0]:
-                                    maximums[0] = dest_x
-                                if dest_x < minimums[0]:
-                                    minimums[0] = dest_x
-                                if dest_y > maximums[1]:
-                                    maximums[1] = dest_y
-                                if dest_y < minimums[1]:
-                                    minimums[1] = dest_y
-                                pos_list.append((dest_x, dest_y))
-                            else:
+            # self.blab("* getting draw buffer from _im")
+            _d = ImageDraw.Draw(self._im)
+            try:
+                self.blab("* drawing text at {} using PIL Draw"
+                          " object".format(pos))
+                _d.text(pos, text, font=fnt, fill=(255,255,255,255))
+                pos_list = []
+                self.blab("* drawing text from buffer")
+                for src_y in range(size[1]):
+                    if erase_rect is None:
+                        for src_x in range(size[0]):
+                            dest_x, dest_y = src_x, src_y
+                            r, g, b, a = self._im.getpixel((src_x, src_y))
+                            alpha = float(a) / 255.
+                            if alpha >= threshold:
+                                on_count += 1  # for debugging only
+                                if erase_behind_enable:
+                                    if dest_x > maximums[0]:
+                                        maximums[0] = dest_x
+                                    if dest_x < minimums[0]:
+                                        minimums[0] = dest_x
+                                    if dest_y > maximums[1]:
+                                        maximums[1] = dest_y
+                                    if dest_y < minimums[1]:
+                                        minimums[1] = dest_y
+                                    pos_list.append((dest_x, dest_y))
+                                else:
+                                    self.set_pixel((dest_x, dest_y), True,
+                                                   refresh_enable=False)
+                    else:
+                        # separate x loop for optimization
+                        for src_x in range(size[0]):
+                            dest_x, dest_y = src_x, src_y
+                            r, g, b, a = self._im.getpixel((src_x, src_y))
+                            alpha = float(a) / 255.
+                            if alpha >= threshold:
+                                on_count += 1  # for debugging only
                                 self.set_pixel((dest_x, dest_y), True,
                                                refresh_enable=False)
+                # TODO: draw text to PIL Image
+                if erase_behind_enable and (erase_rect is None):
+                    # generate and draw the erase rect using the
+                    # minimums & maximums, then draw the postponed text
+                    # pixels (from pos_list):
+                    results = (tuple(minimums),
+                               (maximums[0]+1, maximums[1]+1)
+                    )
+                    # self.blab("* generate and draw the erase rect")
+                    self.draw_rect(results, False)
+                    # self.blab("* draw post_list")
+                    for this_pos in pos_list:
+                        self.set_pixel(this_pos, True,
+                                       refresh_enable=False)
+                    _d.rectangle(results, fill=(255,255,255,0))
                 else:
-                    # separate x loop for optimization
-                    for src_x in range(size[0]):
-                        dest_x, dest_y = src_x, src_y
-                        r, g, b, a = self._im.getpixel((src_x, src_y))
-                        alpha = float(a) / 255.
-                        if alpha >= threshold:
-                            on_count += 1  # for debugging only
-                            self.set_pixel((dest_x, dest_y), True,
-                                           refresh_enable=False)
-            # TODO: draw text to PIL Image
-            if erase_behind_enable and (erase_rect is None):
-                # generate and draw the erase rect using the
-                # minimums & maximums, then draw the postponed text
-                # pixels (from pos_list):
-                results = (tuple(minimums),
-                           (maximums[0]+1, maximums[1]+1)
-                )
-                self.draw_rect(results, False)
-                for this_pos in pos_list:
-                    self.set_pixel(this_pos, True,
-                                   refresh_enable=False)
-                self._d.rectangle(results, fill=(255,255,255,0))
-            else:
-                # rect can be ((x,y),(x2,y2)) or (x,y,x2,y2):
-                rect = (0, 0, self.dc["width"], self.dc["height"])
-                self._d.rectangle(rect, fill=(255,255,255,0))
+                    # self.blab("* wipe _d buffer")
+                    # rect can be ((x,y),(x2,y2)) or (x,y,x2,y2):
+                    rect = (0, 0, self.dc["width"], self.dc["height"])
+                    _d.rectangle(rect, fill=(255,255,255,0))
+            except Exception as e:
+                raise e
+            finally:
+                if _d is not None:
+                    del _d
+                    _d = None
             # for y in range(self.dc["height"]):
                 # for x in range(start_x, self.dc["width"]):
             if on_count < 1:
@@ -875,10 +896,12 @@ class PicoLCD:
         else:
             col, row = pos  # col, row format is in y,x order
             addr = {0: 0x80, 1: 0xc0, 2:0x94, 3:0xd4}[row] + col
+            self.blab("* send 0x94 command (non-graphics text)")
             result = self.wr(bytes(0x94, 0x00, 0x01, 0x00, 0x64, addr))
             if result < 1:
                 print("[ pypicolcd ] ERROR: " + str(result)
                       + "byte(s) written for address")
+            self.blab("* send OUT_REPORT_DATA command")
             self.wr(bytes(OUT_REPORT_DATA, 0x01, 0x00, 0x01, len(text))
                     + text)
 
@@ -1030,6 +1053,7 @@ class PicoLCD:
     #   edges)
     def refresh_block(self, zone_i, block_i, zone_stop_x=-1,
                       enable_reconnect=True):
+        self.blab("* refresh zone {} block {}".format(zone_i, block_i))
         # self._cmd3_len_i = 11
         # self._cmd4_len_i = 4
         result = 0
@@ -1060,6 +1084,7 @@ class PicoLCD:
         if zone_i % 2 == 1:
             fb = self.framebuffers[block_i * self.dc["zones"] + (zone_i-1)]
             cmd3.extend(fb)
+            self.blab("* write even zone")
             result += self.wr(cmd3, enable_reconnect=enable_reconnect)
             cmd4 = [
                 OUT_REPORT_DATA,
@@ -1074,6 +1099,7 @@ class PicoLCD:
                 cmd4.extend(fb[:zone_stop_x])
             else:
                 cmd4.extend(fb)
+            self.blab("* write odd zone")
             result += self.wr(cmd4, enable_reconnect=enable_reconnect)
         else:
             fb = self.framebuffers[block_i * self.dc["zones"] + zone_i]
@@ -1082,6 +1108,7 @@ class PicoLCD:
                 cmd3.extend(fb[:zone_stop_x])
             else:
                 cmd3.extend(fb)
+            self.blab("* write odd zone")
             result += self.wr(cmd3, enable_reconnect=enable_reconnect)
 
     # returns: True or False

@@ -2,6 +2,7 @@ import pypicolcd
 from pypicolcd import PicoLCD
 # from pypicolcd import find_resource
 from pypicolcd import get_font_meta
+from pypicolcd import to_bool
 
 import sys
 import signal
@@ -129,6 +130,7 @@ class LCDServer(asyncore.dispatcher):
         self.set_reuse_addr()
         self.bind((host, port))
         self.listen(5)
+        print("* lcd-daemon is listening on {}:{}".format(host, port))
         self.daemon = daemon
 
     def handle_accept(self):
@@ -148,7 +150,7 @@ class LCDDaemon(asyncore.dispatcher_with_send):
         else:
             self.logger = logger
 
-    def show_lines(self, lines):
+    def show_lines(self, lines, font=None):
         shown_count = 0
         # if not self.p.ready():
         if self.p.dc is None:
@@ -163,11 +165,13 @@ class LCDDaemon(asyncore.dispatcher_with_send):
         if lines is None:
             lines = []
         x, y = 0, -1
-        font_name = "Press Start"
-        meta = get_font_meta(font_name)
+        # font = "Press Start"
+        if font is None:
+            font = self.p.default_font
+        meta = get_font_meta(font)
         if meta is None:
             raise RuntimeError("ERROR: '{}' was not"
-                               " found.".format(font_name))
+                               " found.".format(font))
         _LINES_MAX = self.p.get_height() // (meta["default_size"] + 1)
         for line in lines:
             if y < _LINES_MAX:
@@ -181,7 +185,7 @@ class LCDDaemon(asyncore.dispatcher_with_send):
                 if line is None:
                     raise ValueError("line is None")
                 print("* showing '{}'...".format(line))
-                self.p.draw_text(y, x, line, font="Press Start",
+                self.p.draw_text(y, x, line, font=font,
                             erase_behind_enable=True)
                 shown_count += 1
             else:
@@ -201,19 +205,32 @@ class LCDDaemon(asyncore.dispatcher_with_send):
         Process an action dictionary, such as URL params or command line
         params, in either case reduced to names and values.
         """
+        prev_verbose = self.p.verbose_enable
         res = {}
         lines = action.get("lines")
         allowed_names = ["background", "foreground", "brightness",
-                         "lines"]
+                         "lines", "verbose", "font"]
         allowed_commands = ["clear", "flash", "push"]
         for name, value in action.items():
             if name in allowed_names:
-                action[name] = value
+                if name == "verbose":
+                    self.p.verbose_enable = to_bool(value)
+                else:
+                    action[name] = value
             elif name in allowed_commands:
                 action[name] = True
             else:
+                self.p.verbose_enable = prev_verbose
                 raise ValueError("{} is an unknown option (value"
                                  " '{}').".format(name, value))
+
+        font = action.get("font")
+        if font is not None:
+            meta = get_font_meta(font)
+            if meta is None:
+                raise ValueError("The font is not known. Try (case"
+                                 " doesn't matter):"
+                                 " {}".format(font_meta.keys()))
 
         if action.get("clear") is True:
             self.p.clear()
@@ -229,6 +246,12 @@ class LCDDaemon(asyncore.dispatcher_with_send):
         if image_path is not None:
             self.show_image(image_path)
         if action.get("push") is True:
+            if font is not None:
+                raise ValueError("Custom fonts do not work with push,"
+                                 " since it requires a fixed line"
+                                 " height (that is an even divisor of"
+                                 " the device height; only 8 is"
+                                 " implemented).")
             try:
                 if lines is not None:
                     all_text = " ".join(lines)
@@ -239,7 +262,7 @@ class LCDDaemon(asyncore.dispatcher_with_send):
             except pypicolcd.DisconnectedError as e:
                 print("  * {}".format(e))
         else:
-            self.show_lines(lines)
+            self.show_lines(lines, font=font)
 
         image_path = action.get("foreground")
         if image_path is not None:
@@ -250,6 +273,7 @@ class LCDDaemon(asyncore.dispatcher_with_send):
             self.p.flash()
 
         res["info"] = "OK"
+        self.p.verbose_enable = prev_verbose
         return res
 
     def handle_signal(self, signum, frame):
