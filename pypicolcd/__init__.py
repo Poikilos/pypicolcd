@@ -596,32 +596,11 @@ class PicoLCD:
             sc[font_path] = {}
         if fss not in sc[font_path]:
             sc[font_path][fss] = {}
-
+        is_escaped = False
         for c in text:
             generate_enable = False
             this_sc = None
             this_spacing_x = spacing_x
-            if abs_x + 5 > dst_w:
-                abs_x = 0
-                abs_y += 8
-            if abs_y + 8 > dst_h:  # == is ok since is exclusive rect
-                # then scroll
-                if scroll_count > 3:
-                    self.clear()
-                else:
-                    br_count = self.dc["blockrows"]
-                    for dst_br_i in range(br_count):
-                        src_br_i = dst_br_i + scroll_count
-                        if src_br_i >= br_count:
-                            # if nothing to scroll, erase destination
-                            self.reset_row(dst_br_i)
-                        else:
-                            self.transfer_row(dst_br_i, src_br_i)
-                abs_y -= scroll_count * 8  # Size of byte is the
-                                           # mandatory font height for
-                                           # this method.
-                if abs_y < 0:
-                    abs_y = 0
 
             if c not in sc[font_path][fss]:
                 try:
@@ -678,6 +657,65 @@ class PicoLCD:
                 # print("* '{}' became {} wide...".format(c, len(this_sc)))
             else:
                 this_sc = sc[font_path][fss][c]
+
+
+            if (c == "\\") and (not is_escaped):
+                is_escaped = True
+                continue
+
+            tab_w = 32
+            if c == "\n":
+                is_escaped = True
+                c = "n"
+            elif c == "\r":
+                is_escaped = True
+                c = "r"
+            elif c == "\t":
+                is_escaped = True
+                c = "t"
+
+
+            if is_escaped:
+                is_escaped = False
+                if c == "n":
+                    abs_x = 0
+                    abs_y += 8
+                    continue
+                elif c == "r":
+                    abs_x = 0
+                    continue
+                elif c == "t":
+                    abs_x += tab_w
+                    tab_slot_i = abs_x // tab_w
+                    abs_x = tab_slot_i * tab_w
+                    continue
+                # otherwise count it as a literal
+
+            if abs_x + len(this_sc) > dst_w:
+                abs_x = 0
+                abs_y += 8
+            if abs_y + 8 > dst_h:  # == is ok since is exclusive rect
+                # then scroll
+                if scroll_count > len(this_sc):
+                    # NOTE: the length of stripe cache is the width
+                    # of the character, since each byte is one 1x8
+                    # 1-bit stripe.
+                    self.clear()
+                else:
+                    br_count = self.dc["blockrows"]
+                    for dst_br_i in range(br_count):
+                        src_br_i = dst_br_i + scroll_count
+                        if src_br_i >= br_count:
+                            # if nothing to scroll, erase destination
+                            self.reset_row(dst_br_i)
+                        else:
+                            self.transfer_row(dst_br_i, src_br_i)
+                abs_y -= scroll_count * 8  # Size of byte is the
+                                           # mandatory font height for
+                                           # this method.
+                if abs_y < 0:
+                    abs_y = 0
+
             x = None
             zones = []
             block_i = int(abs_y/self.dc["blockrows"])

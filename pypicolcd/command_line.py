@@ -111,7 +111,7 @@ def main():
         return 1
     for i in range(1, len(sys.argv)):
         arg = sys.argv[i]
-        if arg.startswith("--"):
+        if arg.startswith("--") and not arg.startswith("---"):
             if (len(arg) == 2):
                 customDie("There was a blank argument", logger=logger)
             arg_parts = arg[2:].split("=")
@@ -139,7 +139,7 @@ def main():
     # lcdd.push_action(action)
 
     # s = socket.socket()
-    # s.connect(('127.0.0.1', 25664))
+    # s.connect(('127.0.0.1', LCD_PORT))
     # # while True:
     # s.send(json.dumps(action).encode());
     # # if(str == "Bye" or str == "bye"):

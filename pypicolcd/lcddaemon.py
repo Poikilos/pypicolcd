@@ -39,7 +39,10 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
                     print("* the request type is not implemented:"
                           " '{}'".format(req_s))
             else:
-                print("* the client provided a blank get request.")
+                pass
+                # TODO: I'm not sure why this happens, but it happens
+                #   whenever the connection closes.
+                # print("* the client provided a blank get request.")
         else:
             print("* the client provided a NULL get request.")
 
@@ -96,6 +99,11 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
                                " connected to the server.")
                         # print("* ERROR: {}".format(msg))
                         # NOTE: push_action usually shows the error
+                        res = {"error": msg}
+                        res_bytes = json.dumps(res).encode()
+                        self.send(res_bytes)
+                    except ValueError as e:
+                        msg = str(e)
                         res = {"error": msg}
                         res_bytes = json.dumps(res).encode()
                         self.send(res_bytes)
@@ -165,8 +173,11 @@ class LCDDaemon(asyncore.dispatcher_with_send):
             if y < _LINES_MAX:
                 y += 1
                 # p_dfs = self.p.default_font_size
-                # self.p.draw_text(y, x,
-                            # "Default font is " + str(p_dfs) + "pt ninepin")
+                # self.p.draw_text(
+                    # y,
+                    # x,
+                    # "Default font is " + str(p_dfs) + "pt ninepin"
+                # )
                 if line is None:
                     raise ValueError("line is None")
                 print("* showing '{}'...".format(line))
@@ -201,7 +212,8 @@ class LCDDaemon(asyncore.dispatcher_with_send):
             elif name in allowed_commands:
                 action[name] = True
             else:
-                raise ValueError("{} is an unknown option (value '{}').".format(name, value))
+                raise ValueError("{} is an unknown option (value"
+                                 " '{}').".format(name, value))
 
         if action.get("clear") is True:
             self.p.clear()
@@ -254,7 +266,7 @@ def main():
     lines = []
     for i in range(1, len(sys.argv)):
         arg = sys.argv[i]
-        if arg.startswith("--"):
+        if arg.startswith("--") and not arg.startswith("---"):
             if (len(arg) == 2):
                 customDie("There was a blank argument", logger=logger)
             arg_parts = arg[2:].split("=")
@@ -283,7 +295,8 @@ def main():
         action["lines"] = lines
     lcdd = LCDDaemon(logger=logger)
 
-    # See https://raspberrypi.stackexchange.com/questions/77738/how-to-exit-a-python-daemon-cleanly
+    # See <https://raspberrypi.stackexchange.com/questions/77738/
+    # how-to-exit-a-python-daemon-cleanly>
     signal.signal(signal.SIGTERM, lcdd.handle_signal)
 
     # See https://docs.python.org/2/library/asyncore.html
@@ -295,7 +308,8 @@ def main():
     # See [Nischaya Sharma's Nov 29, 2018 answer edited Feb 16, 2019 by
     # Mohammad Mahjoub](https://stackoverflow.com/a/53536336)
     # on
-    # https://stackoverflow.com/questions/21233340/sending-string-via-socket-python
+    # <https://stackoverflow.com/questions/21233340/
+    # sending-string-via-socket-python>
     # s = socket.socket()
     # try:
         # s.bind(('', LCD_PORT))
