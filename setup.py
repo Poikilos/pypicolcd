@@ -17,7 +17,7 @@ setuptools.setup(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
         'Operating System :: OS Independent',
-	'Topic :: System :: Hardware',
+    'Topic :: System :: Hardware',
     ],
     keywords = 'python picoLCD Sideshow 256x64',
     url = "https://github.com/poikilos/pypicolcd",
@@ -30,10 +30,11 @@ setuptools.setup(
     # scripts = ['example'] ,
     # See https://stackoverflow.com/questions/27784271/how-can-i-use-setuptools-to-generate-a-console-scripts-entry-point-which-calls
     entry_points = {
-	'console_scripts': ['lcd-cli=pypicolcd.command_line:main'],
+    'console_scripts': ['lcd-cli=pypicolcd.command_line:main',
+                        'lcd-daemon=pypicolcd.lcddaemon:main'],
     },
     install_requires = [
-	'pyusb',
-	'Pillow'
+    'pyusb',
+    'Pillow'
     ]
  )

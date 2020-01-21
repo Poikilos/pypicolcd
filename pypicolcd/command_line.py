@@ -15,19 +15,28 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from pypicolcd import PicoLCD
-from pypicolcd import to_bool
+# from pypicolcd import PicoLCD
+# from pypicolcd import to_bool
 # from pypicolcd import find_resource
-from pypicolcd import get_font_meta
+# from pypicolcd import get_font_meta
 from datetime import datetime
 import random
 import timeit
+import pypicolcd
+# from pypicolcd.lcddaemon import LCDDaemon
+from pypicolcd.lcddaemon import LCD_PORT
 from timeit import default_timer as best_timer
 import sys
-
+import json
+import socket
+import logging
+import asyncore
+import socket
+import json
+import urllib.parse
 # TODO: gradually add features from example-cli.py
 
-def customDie(msg, exit_code=1):
+def customDie(msg, exit_code=1, logger=None):
     print("")
     print("")
     print("ERROR:")
@@ -36,60 +45,67 @@ def customDie(msg, exit_code=1):
     print("")
     exit(exit_code)
 
+class HTTPClient(asyncore.dispatcher):
 
+    def __init__(self, host, path, action):
+        asyncore.dispatcher.__init__(self)
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.host = host
+        self.port = LCD_PORT
+        self.connect( (host, LCD_PORT) )
+        buffer_s = 'GET {} HTTP/1.0\r\n\r\n'.format(path)
+        self.buffer = buffer_s.encode()
+        # self.buffer2 = json.dumps(action).encode()
+        # try:
+        # except ConnectionRefusedError:
+            # print("* the lcd-daemon is not running.")
+            # self.close()
+            # return
 
-def show_image(path, params={}, destination=None):
-    p = destination
-    if p is None:
-        p = PicoLCD()
-    if not os.path.isfile(image_path):
-        raise ValueError("{} does not exist.".format(image_path))
-    p.draw_image((x, y), image_path, brightness=1)
-    return p
+    def handle_connect(self):
+        pass
 
-def show_lines(lines, params={}, destination=None):
-    shown_count = 0
-    p = destination
-    if p is None:
-        p = PicoLCD()
-    if p.dc is None:
-        error = p.error
-        if error is None:
-            raise RuntimeError("ERROR: could not load device for unknown reason.")
-        # else error already shown by p
+    def handle_error(self):
+        print("* lcd-daemon is not running or is otherwise"
+              " inaccessible at {}:{}.".format(self.host, self.port))
+        self.close()  # ONLY close on read in one-shot command scripts.
 
-    if params.get("clear") is True:
-        p.clear()
-    # lines = params.get("lines")
-    if lines is None:
-        lines = []
-    x, y = 0, -1
-    meta = get_font_meta("Press Start")
-    _LINES_MAX = p.get_height() // (meta["default_size"] + 1)
-    for line in lines:
-        if y < _LINES_MAX:
-            y += 1
-            # p_dfs = p.default_font_size
-            # p.draw_text(y, x,
-                        # "Default font is " + str(p_dfs) + "pt ninepin")
-            if line is None:
-                raise ValueError("line is None")
-            print("* showing '{}'...".format(line))
-            p.draw_text(y, x, line, font="Press Start",
-                        erase_behind_enable=True)
-            shown_count += 1
+    def handle_close(self):
+        self.close()
+        # print("* the connection has closed.")
+
+    def handle_read(self):
+        # print(self.recv(pypicolcd.JSON_MAX).decode())
+
+        res_bytes = self.recv(pypicolcd.JSON_MAX)
+        if res_bytes:
+            res_s = res_bytes.decode()
+            try:
+                res = json.loads(res_s)
+                print("* the server says: {}".format(res))
+                code = 0
+                if res.get("error") is not None:
+                    code = 1
+            except json.decoder.JSONDecodeError:
+                print("* ERROR: the server provided invalid JSON:"
+                      " '{}'".format(res_s))
         else:
-            customDie("* Only {} line(s) fit(s) on the LCD, so '{}'"
-                      " will not appear.".format(_LINES_MAX, line))
-    # print("* show_lines is complete. The LCD should have"
-          # " {} lines.".format(shown_count))
-    return p
+            print("* ERROR: The server provided an empty response.")
+        self.close()  # ONLY close on read in one-shot command scripts.
+
+    def writable(self):
+        return (len(self.buffer) > 0)
+
+    def handle_write(self):
+        sent = self.send(self.buffer)
+        # print("* sent '{}'".format(self.buffer[:sent].decode()))
+        self.buffer = self.buffer[sent:]
 
 def main():
-    settings = {}
+    logger = logging.getLogger("lcd-cli")
+    # lcdd = LCDDaemon()
+    action = {}
     lines = []
-    allowed_names = ["background", "foreground", "brightness"]
-    allowed_commands = ["clear", "flash", "push"]
     if len(sys.argv) < 1:
         sys.stdout.write("You didn't provide any parameters, so there is nothing to do.")
         return 1
@@ -97,64 +113,56 @@ def main():
         arg = sys.argv[i]
         if arg.startswith("--"):
             if (len(arg) == 2):
-                customDie("There was a blank argument")
+                customDie("There was a blank argument", logger=logger)
             arg_parts = arg[2:].split("=")
             name = arg_parts[0]
             value = None
             if len(arg_parts) > 1:
                 value = arg_parts[1]
-                # settings[name] = value
+                action[name] = value
                 if len(value) == 0:
-                    customDie("There was a blank value: " + arg)
+                    customDie("There was a blank value: " + arg,
+                              logger=logger)
             else:
-                # settings[name] = True
+                action[name] = True
                 value = True
 
             if len(arg_parts) > 2:
-                customDie("There was more than one '=' in {}".format(arg))
-            if name == "clear":
-                settings[name] = to_bool(value)
-            elif name in allowed_names:
-                settings[name] = value
-            elif name in allowed_commands:
-                settings[name] = True
-            else:
-                customDie("{} is an unknown option (name '{}', value '{}').".format(arg, name, value))
+                customDie(
+                    "There was more than one '=' in {}".format(arg),
+                    logger=logger
+                )
         else:
             lines.append(arg)
-    p = PicoLCD()
+    if len(lines) > 0:
+        action["lines"] = lines
+    # lcdd.push_action(action)
 
-    if settings.get("clear") is True:
-        p.clear()
+    # s = socket.socket()
+    # s.connect(('127.0.0.1', 25664))
+    # # while True:
+    # s.send(json.dumps(action).encode());
+    # # if(str == "Bye" or str == "bye"):
+        # # break
+    # res = None
+    # res_bytes = s.recv(pypicolcd.JSON_MAX)
+    # if res_bytes:
+        # res_s = res_bytes.decode()
+        # try:
+            # res = json.loads(res_s)
+            # print("* the server says: {}".format(res))
+        # except json.decoder.JSONDecodeError:
+            # print("* ERROR: the server provided invalid JSON:"
+                  # " '{}'".format(res_s))
+    # else:
+        # print("* ERROR: The server provided an empty response.")
+    # s.close()
+    action_json = json.dumps(action)
+    url_args = ""
+    url_args = "?json=" + urllib.parse.quote(action_json, safe='')
 
-    brightness = settings.get("brightness")
-    if brightness is not None:
-        b = int(brightness)
-        print("* setting brightness to {}...".format(b))
-        p.set_backlight(b)
-
-    image_path = settings.get("foreground")
-
-    if image_path is not None:
-        show_image(image_path, destination=p)
-
-    if settings.get("push") is True:
-        all_text = " ".join(lines)
-        print("* showing {}...".format(all_text))
-        p.push_text(all_text)
-        # for line in lines:
-            # p.push_text(line)
-    else:
-        show_lines(lines, params=settings, destination=p)
-
-    image_path = settings.get("foreground")
-    if image_path is not None:
-        show_image(image_path, destination=p)
-
-    if settings.get("flash") is True:
-        p.flash()
-        p.flash()
-        p.flash()
+    client = HTTPClient('localhost', '/'+url_args, action)
+    asyncore.loop()
 
 if __name__ == "__main__":
     main()

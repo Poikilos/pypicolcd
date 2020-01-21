@@ -80,7 +80,12 @@ import inspect
 from timeit import default_timer as best_timer
 
 from PIL import Image, ImageDraw, ImageFont
-#from PIL import Image, ImageDraw, ImageFont, ImageColor
+# from PIL import Image, ImageDraw, ImageFont, ImageColor
+
+class DisconnectedError(Exception):
+    pass
+
+JSON_MAX = 8192
 
 def view_traceback(indent=""):
     ex_type, ex, tb = sys.exc_info()
@@ -109,7 +114,6 @@ def to_bool(s):
     else:
         ret = True
     return ret
-
 
 def bytes(*b):
     return "".join([chr(x) for x in b])
@@ -155,6 +159,8 @@ tmp_dc["chip_size"] = 64 * (64 / tmp_dc["ppb"])  # 64x64 pixels,
 tmp_dc["chip_count"] = 4
 DC_DICT[str(0xc002)] = tmp_dc
 tmp_dc = None
+
+
 
 def get_pixel_color(canvas, x, y):
     # this function is useless, since doesn't work for anything but
@@ -218,6 +224,8 @@ for name, meta in font_meta.items():
 def get_font_meta(name):
     return font_meta.get(name.lower())
 
+
+
 class PicoLCD:
 
     def __init__(self, verbose_enable=False):
@@ -265,7 +273,7 @@ class PicoLCD:
                     this_idProduct = device.idProduct
                     self.blab("  * found " + self.dc["name"])
                     found_count += 1
-        if self.dc is not None:
+        if self.ready():
             self.change_enables = []
             for block_i in range(self.dc["blockrows"]):
                 for zone_i in range(self.dc["zones"]):
@@ -344,9 +352,10 @@ class PicoLCD:
         if self.error is not None:
             print("* pypicolcd found {} known device(s)".format(found_count))
             print(self.error)
-        if self.dc is not None:
+        if self.ready():
             self.clear()
-        self.set_backlight(self._backlight_level)
+            self.set_backlight(self._backlight_level,
+                               enable_reconnect=False)
         return self.dc is not None
 
     def blab(self, msg, where=None):
@@ -422,19 +431,36 @@ class PicoLCD:
                                        refresh_enable=False)
         self.refresh()
 
-    def wr(self, m):
+    def wr(self, m, enable_reconnect=True):
         # interruptWrite(endpoint, buffer, timeout)
         # returns bytes written
         try:
             return self.handle.interruptWrite(usb.ENDPOINT_OUT + 1, m, 1000)
         except usb.core.USBError:
-            print("* attemping to reconnect...")
-            if self.connect():
-                self.reset_framebuffer()
-                self.invalidate()
-                self.refresh()
-                return self.handle.interruptWrite(usb.ENDPOINT_OUT + 1, m, 1000)
+            if enable_reconnect:
+                if self.reconnect():
+                    return self.handle.interruptWrite(usb.ENDPOINT_OUT + 1, m, 1000)
+                else:
+                    raise DisconnectedError("Reconnecting to the device failed.")
+        except AttributeError:  # 'NoneType' object has no attribute 'interruptWrite'
+            if enable_reconnect:
+                if self.reconnect():
+                    return self.handle.interruptWrite(usb.ENDPOINT_OUT + 1, m, 1000)
+                else:
+                    raise DisconnectedError("Reconnecting to the device failed.")
         return 0
+
+    def reconnect(self):
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe, 2)
+        self.blab("* " + calframe[1][3] + " is reconnecting...")
+        result = self.connect()
+        if result:
+            self.reset_framebuffer()
+            self.invalidate()
+            self.refresh(enable_reconnect=False)
+        return result
+
 
     # Transfer row src_br_i to dst_br_i then erase row src_br_i
     # (for graphics type models only!).
@@ -470,9 +496,8 @@ class PicoLCD:
             self.framebuffer[1] = 255
             if self.framebuffer[0] == 255:
                 # deal with list initialization paranoia
-                print("[ pycolcd ] ERROR: failed to create unique"
-                      " framebuffer elements")
-                sys.exit(1)
+                raise RuntimeError("[ pycolcd ] ERROR: failed to create"
+                                   " unique framebuffer elements")
             else:
                 self.framebuffer[1] = 0
                 self.framebuffers.append(self.framebuffer)
@@ -537,6 +562,8 @@ class PicoLCD:
                   refresh_enable=True, spacing_x=1, scroll_count=1):
         results = None, None
         abs_x, abs_y = self._pos
+        if not self.ready():
+            raise DisconnectedError("The device is not connected.")
         dst_w = self.dc["width"]
         dst_h = self.dc["height"]
         if self._im is None:
@@ -648,7 +675,7 @@ class PicoLCD:
                     # sc[font_path][fss][c] = this_sc
                     this_sc = sc[font_path][fss][c]
                     # x += space_w
-                print("* '{}' became {} wide...".format(c, len(this_sc)))
+                # print("* '{}' became {} wide...".format(c, len(this_sc)))
             else:
                 this_sc = sc[font_path][fss][c]
             x = None
@@ -673,8 +700,7 @@ class PicoLCD:
             abs_x += count_x + spacing_x
             # scrolling is caught next time, see start of method above
         self._pos = abs_x, abs_y
-        self.refresh()
-
+        return self.refresh()
 
     def draw_text(self, row, col, text, font=None, font_path=None,
                   font_size=None, threshold=None,
@@ -946,15 +972,17 @@ class PicoLCD:
     # was done). For advanced use, such as if you drew to a framebuffer
     # manually, call invalidate first to inform PicoLCD which
     # framebuffers changed
-    def refresh(self):
+    def refresh(self, enable_reconnect=True):
         for fb_i in range(len(self.change_enables)):
             if self.change_enables[fb_i] != 0:
                 block_i = int(fb_i / self.dc["blockrows"])
                 zone_i = fb_i % self.dc["blockrows"]
                 self.refresh_block(
                     zone_i, block_i,
-                    zone_stop_x=self.change_enables[fb_i])
-
+                    zone_stop_x=self.change_enables[fb_i],
+                    enable_reconnect=enable_reconnect
+                )
+        return True
     # Refresh all or part of an lcd block from the matching framebuffer.
     # zone_stop_x: refresh part of zone (if -1,
     #   refresh entire zone; if 0, do not refresh anything so calling
@@ -962,7 +990,8 @@ class PicoLCD:
     #   of drawing one character at a time from 7.6 to 8.1 (though
     #   goes back down over time probably since characters overlap block
     #   edges)
-    def refresh_block(self, zone_i, block_i, zone_stop_x=-1):
+    def refresh_block(self, zone_i, block_i, zone_stop_x=-1,
+                      enable_reconnect=True):
         # self._cmd3_len_i = 11
         # self._cmd4_len_i = 4
         result = 0
@@ -993,7 +1022,7 @@ class PicoLCD:
         if zone_i % 2 == 1:
             fb = self.framebuffers[block_i * self.dc["zones"] + (zone_i-1)]
             cmd3.extend(fb)
-            result += self.wr(cmd3)
+            result += self.wr(cmd3, enable_reconnect=enable_reconnect)
             cmd4 = [
                 OUT_REPORT_DATA,
                 chipsel | 0x01,
@@ -1007,7 +1036,7 @@ class PicoLCD:
                 cmd4.extend(fb[:zone_stop_x])
             else:
                 cmd4.extend(fb)
-            result += self.wr(cmd4)
+            result += self.wr(cmd4, enable_reconnect=enable_reconnect)
         else:
             fb = self.framebuffers[block_i * self.dc["zones"] + zone_i]
             if zone_stop_x > -1:
@@ -1015,7 +1044,7 @@ class PicoLCD:
                 cmd3.extend(fb[:zone_stop_x])
             else:
                 cmd3.extend(fb)
-            result += self.wr(cmd3)
+            result += self.wr(cmd3, enable_reconnect=enable_reconnect)
 
     # returns: True or False
     def get_pixel(self, pos):
@@ -1032,10 +1061,11 @@ class PicoLCD:
         byte_i = x % self.dc["block_size"]
         pixel = 1 << bit_i
         if (fb_i < 0) or (fb_i >= len(self.framebuffers)):
-            print("[ PicoLCD ] ERROR in get_pixel: buffer "
-                  + str(fb_i) + " does not exist in "
-                  + str(len(self.framebuffers)) + "-len buffer list.")
-            return False
+            raise RuntimeError("[ PicoLCD ] ERROR in get_pixel: buffer "
+                               + str(fb_i) + " does not exist in "
+                               + str(len(self.framebuffers)) + "-len"
+                               + " buffer list.")
+
         framebuffer = self.framebuffers[fb_i]
         result = framebuffer[byte_i]
         return (result & pixel) > 0
@@ -1054,10 +1084,10 @@ class PicoLCD:
         x, y = pos
         if force_refresh_enable:
             refresh_enable=True
-        if self.dc is None:
-            print("* reconnecting...")
+        if not self.ready():
+            print("* set_pixel attempting to connect...")
             if not self.connect():
-                raise RuntimeError("The device is not connected.")
+                raise DisconnectedError("The device is not connected.")
         dst_w = self.dc["width"]
         dst_h = self.dc["height"]
         # if x < 0 or y < 0 or x > dst_w or y > dst_h:
@@ -1109,14 +1139,17 @@ class PicoLCD:
     def set_preview_flag(self, dirty):
         self.preview_flag = dirty
 
+    def ready(self):
+        return self.dc is not None
+
     # dat_b: one byte containing (8) 1-bit pixels VERTICALLY
     def set_byte(self, pos, dat_b, refresh_enable=True,
                  force_refresh_enable=False):
         # NOTE: one byte covers 8 pixels on y axis from landscape view
-        if self.dc is None:
-            print("* reconnecting...")
+        if not self.ready():
+            print("* set_byte is attempting to reconnect...")
             if not self.connect():
-                raise RuntimeError("The device is not connected.")
+                raise DisconnectedError("The device is not connected.")
         x, y = pos
         if force_refresh_enable:
             refresh_enable=True
@@ -1164,7 +1197,7 @@ class PicoLCD:
         self.refresh()
         self.preview_flag = True
 
-    def set_backlight(self, level):
+    def set_backlight(self, level, enable_reconnect=True):
         # NOTE: 1-1000 , default 800 according to mhswa Aug 27, 2018:
         # https://forum.netgate.com/topic/134151/lcd4linux-picolcd/8
         try:
@@ -1174,7 +1207,8 @@ class PicoLCD:
         if b != level:
             raise TypeError("The level must be an integer 0-255")
         if (b >= 0) and (b <= 255):
-            self.wr([OUT_REPORT_LCD_BACKLIGHT, b])
+            self.wr([OUT_REPORT_LCD_BACKLIGHT, b],
+                    enable_reconnect=enable_reconnect)
             self._backlight_level = b
         else:
             raise ValueError("The level must be 0-255")
@@ -1208,7 +1242,9 @@ class PicoLCD:
 
 if __name__ == "__main__":
     from datetime import datetime
-    p = PicoLCD()
+    p = None
+    if p is None:
+        p = PicoLCD()
     if p.dc is None:
         error = p.error
         if error is None:
