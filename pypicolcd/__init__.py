@@ -805,8 +805,8 @@ class PicoLCD:
                   erase_behind_enable=False, refresh_enable=True,
                   erase_rect=None):
         """
-        Draw text at the row and column specified, assuming 5x8 text
-        (including 1px spacing).
+        Draw text at the row and column specified, assuming 6x8 text
+        (5x7 plus 1px spacing).
 
         For information on other parameters, see the draw_text_at
         documentation.
@@ -814,7 +814,7 @@ class PicoLCD:
         results = None, None
         pos = col, row  # col,row format is y,x order
         if self.dc["type"] == "graphics":
-            pos = (col * 5, row * 8)
+            pos = (col * 6, row * 8)
         return self.draw_text_at(
             pos, text, font=font,
             font_size=font_size,
