@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
-# (example for) pypicolcd, a module for driverless writing to picoLCD
-# Copyright (C) 2018  Jake Gustafson
+"""
+This is a CLI for pypicolcd, which is a module for driverless writing to
+picoLCD
+Copyright (C) 2018  Jake Gustafson
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 
 # from pypicolcd import PicoLCD
 # from pypicolcd import to_bool
@@ -58,9 +61,9 @@ class HTTPClient(asyncore.dispatcher):
         # self.buffer2 = json.dumps(action).encode()
         # try:
         # except ConnectionRefusedError:
-            # print("* the lcd-daemon is not running.")
-            # self.close()
-            # return
+        #     print("* the lcd-daemon is not running.")
+        #     self.close()
+        #     return
 
     def handle_connect(self):
         pass
@@ -107,7 +110,8 @@ def main():
     action = {}
     lines = []
     if len(sys.argv) < 1:
-        sys.stdout.write("You didn't provide any parameters, so there is nothing to do.")
+        sys.stdout.write("You didn't provide any parameters, so there"
+                         " is nothing to do.")
         return 1
     for i in range(1, len(sys.argv)):
         arg = sys.argv[i]
@@ -143,19 +147,19 @@ def main():
     # # while True:
     # s.send(json.dumps(action).encode());
     # # if(str == "Bye" or str == "bye"):
-        # # break
+    #     # break
     # res = None
     # res_bytes = s.recv(pypicolcd.JSON_MAX)
     # if res_bytes:
-        # res_s = res_bytes.decode()
-        # try:
-            # res = json.loads(res_s)
-            # print("* the server says: {}".format(res))
-        # except json.decoder.JSONDecodeError:
-            # print("* ERROR: the server provided invalid JSON:"
-                  # " '{}'".format(res_s))
+    #     res_s = res_bytes.decode()
+    #     try:
+    #         res = json.loads(res_s)
+    #         print("* the server says: {}".format(res))
+    #     except json.decoder.JSONDecodeError:
+    #         print("* ERROR: the server provided invalid JSON:"
+    #               " '{}'".format(res_s))
     # else:
-        # print("* ERROR: The server provided an empty response.")
+    #     print("* ERROR: The server provided an empty response.")
     # s.close()
     action_json = json.dumps(action)
     url_args = ""

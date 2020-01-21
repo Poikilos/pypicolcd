@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+"""
+pypicolcd, a module for driverless writing to picoLCD
+Copyright (C) 2018  Jake Gustafson
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
+
 import pypicolcd
 from pypicolcd import PicoLCD
 # from pypicolcd import find_resource
@@ -178,9 +198,9 @@ class LCDDaemon(asyncore.dispatcher_with_send):
                 y += 1
                 # p_dfs = self.p.default_font_size
                 # self.p.draw_text(
-                    # y,
-                    # x,
-                    # "Default font is " + str(p_dfs) + "pt ninepin"
+                #     y,
+                #     x,
+                #     "Default font is " + str(p_dfs) + "pt ninepin"
                 # )
                 if line is None:
                     raise ValueError("line is None")
@@ -193,7 +213,7 @@ class LCDDaemon(asyncore.dispatcher_with_send):
                                  " so '{}' will not"
                                  " appear.".format(_LINES_MAX, line))
         # print("* show_lines is complete. The LCD should have"
-              # " {} lines.".format(shown_count))
+        #       " {} lines.".format(shown_count))
 
     def show_image(self, path):
         if not os.path.isfile(image_path):
@@ -336,28 +356,28 @@ def main():
     # sending-string-via-socket-python>
     # s = socket.socket()
     # try:
-        # s.bind(('', LCD_PORT))
+    #     s.bind(('', LCD_PORT))
     # except OSError as e:
-        # print(e)
-        # print("Try:")
-        # print("sudo fuser -k {}/tcp".format(LCD_PORT))
-        # exit(1)
+    #     print(e)
+    #     print("Try:")
+    #     print("sudo fuser -k {}/tcp".format(LCD_PORT))
+    #     exit(1)
     # s.listen(5)
     # c, addr = s.accept()
     # print("Socket Up and running with a connection from"
-          # " {}".format(addr))
+    #       " {}".format(addr))
     # while True:
-        # rcvdData = c.recv(1024).decode()
-        # print("* got '{}'".format(rcvdData))
-        # # print "S:",rcvdData
-        # # sendData = raw_input("N: ")
-        # req = json.loads(rcvdData)
-        # lcdd.push_action(req)
-        # res = {}
-        # res["info"] = "ok"
-        # c.send(json.dumps(res).encode())
-        # # if (sendData == "Bye" or sendData == "bye"):
-            # # break
+    #     rcvdData = c.recv(1024).decode()
+    #     print("* got '{}'".format(rcvdData))
+    #     # print "S:",rcvdData
+    #     # sendData = raw_input("N: ")
+    #     req = json.loads(rcvdData)
+    #     lcdd.push_action(req)
+    #     res = {}
+    #     res["info"] = "ok"
+    #     c.send(json.dumps(res).encode())
+    #     # if (sendData == "Bye" or sendData == "bye"):
+    #         # break
     # c.close()
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ The format is based on [Keep a
 Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
-## [git] - 2020-01-20
+## [git] - 2020-01-21
 ### Added
 - Create a server so that the buffer remains the same for multiple
   programs and `lcd-cli` calls.
@@ -18,7 +18,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
     character is used during the entire run of the framebuffer server.
 
 
-## [git] - 2020-01-19
+## [git] - 2020-01-20
 ### Added
 - Create a framebuffer server with a persistent connection.
 

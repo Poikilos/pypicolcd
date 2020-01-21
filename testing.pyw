@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-# (tests for) pypicolcd, a module for driverless writing to picoLCD
-# Copyright (C) 2018  Jake Gustafson
+"""
+This is a testing program for discovering commands for picoLCD devices.
+It is included as part of pypicolcd, a module for driverless writing to
+picoLCD.
+Copyright (C) 2018  Jake Gustafson
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 from datetime import datetime
 import time
 import binascii
@@ -36,7 +39,11 @@ except ModuleNotFoundError as e:
     if "pypicolcd requires pyusb" in str(e):
         raise e
     else:
-        raise ModuleNotFoundError("pypicolcd is not present--try installing it via pip in a virtualenv to automatically get all dependencies--see README.md in pypicolcd")
+        raise ModuleNotFoundError("pypicolcd is not present--try"
+                                  " installing it via pip in a"
+                                  " virtualenv to automatically get all"
+                                  " dependencies--see README.md in"
+                                  " pypicolcd")
 
 try:
     import tkinter as tk
@@ -97,7 +104,7 @@ cmd3 = [
     data_len,
     pixel
 ]
-# clears bottom (landscape right) of each chip (each chip is 64x64 pixels)
+# clears bottom (landscape right) of each chip (each chip is 64x64 px)
 cmd4 = [
     OUT_REPORT_DATA,
     0x01,  # chipsel | 1,
@@ -302,7 +309,8 @@ def draw_image_click():
     y = int(image_pos_y_entry.get().strip())
     if threshold_enable_ivar.get() > 0:  # checkbox is 1 or 0 in tkinter
         this_t = float(threshold_entry.get().strip())
-    p.draw_image((x,y), find_resource("images/kitten.jpg"), threshold=this_t)
+    p.draw_image((x,y), find_resource("images/kitten.jpg"),
+                 threshold=this_t)
     # p.draw_image((0,0), find_resource("images/kitten.jpg"))
     if p.preview_flag:
         clear_canvas_and_warn()
@@ -350,7 +358,8 @@ def draw_text_click():
                 threshold=this_t)
     draw_from_source()
 
-text_pos_label = tk.Label(this_root, text="Text Position:", justify=tk.LEFT)
+text_pos_label = tk.Label(this_root, text="Text Position:",
+                          justify=tk.LEFT)
 text_pos_label.pack(anchor=tk.W)
 text_pos_x_entry = tk.Entry(this_root)
 text_pos_x_entry.pack()
@@ -359,7 +368,8 @@ text_pos_y_entry = tk.Entry(this_root)
 text_pos_y_entry.pack()
 text_pos_y_entry.insert(0, "32")
 
-text_size_label = tk.Label(this_root, text="Text Size (pt):", justify=tk.LEFT)
+text_size_label = tk.Label(this_root, text="Text Size (pt):",
+                           justify=tk.LEFT)
 text_size_label.pack(anchor=tk.W)
 text_size_entry = tk.Entry(this_root)
 text_size_entry.pack()
@@ -377,7 +387,8 @@ render_text_btn = tk.Button(
 render_text_btn.pack(fill='x')
 
 
-image_pos_label = tk.Label(this_root, text="Image Position:", justify=tk.LEFT)
+image_pos_label = tk.Label(this_root, text="Image Position:",
+                           justify=tk.LEFT)
 image_pos_label.pack(anchor=tk.W)
 image_pos_x_entry = tk.Entry(this_root)
 image_pos_x_entry.pack()
@@ -500,8 +511,8 @@ load_short_btn.pack(fill='x')
 load_long_btn = tk.Button(this_root, text="Load 13-byte cmd",
                           command=load_long_btn_click)
 load_long_btn.pack(fill='x')
-#main.mainloop()
-#tk.mainloop()
+# main.mainloop()
+# tk.mainloop()
 
 # p.clear(val=0x00, data_len=32)
 # p.clear(val=0x00)
@@ -515,8 +526,8 @@ load_long_btn.pack(fill='x')
 # p.set_backlight(128)
 # clock:
 # while True:
-    # p.draw_text(3, 0, datetime.now().ctime()[:20])
-    # time.sleep(0.5)
+#     p.draw_text(3, 0, datetime.now().ctime()[:20])
+#     time.sleep(0.5)
 # p.set_pixel((4, 0), True)
 # draw_southwest_arrow()
 # draw_pattern()

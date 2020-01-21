@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-# (example for) pypicolcd, a module for driverless writing to picoLCD
-# Copyright (C) 2018  Jake Gustafson
+"""
+This is an example standalone command-line interface program utilizing
+pypicolcd, which is a module for driverless writing to picoLCD. This
+example is included with pypicolcd.
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+Copyright (C) 2018  Jake Gustafson
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
 
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 
 from pypicolcd import PicoLCD
 from pypicolcd import font_meta
@@ -114,7 +120,7 @@ prev_done = None
 sys.stderr.write("\n")
 while count < max_count:
     # p.draw_rect(((x, y), (r, b)), False, filled=False)
-        # erase old copy (slow, lots of flicker)
+    #     erase old copy (slow, lots of flicker)
     x += x_vel
     y += y_vel
     r = x + im_w
@@ -145,7 +151,7 @@ while count < max_count:
     p.push_text(str(n))
     count += 1
     fps = p.generate_fps()  # only gets fps at interval set by
-                            # set_fps_interval, otherwise None
+    #                         set_fps_interval, otherwise None
     # fps = p.get_fps()  # always gets fps if has ever been calculated
     if fps is not None:
         # print("[ example.py ] fps: " + str(fps))
