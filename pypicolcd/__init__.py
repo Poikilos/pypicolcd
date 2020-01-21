@@ -805,8 +805,8 @@ class PicoLCD:
                   erase_behind_enable=False, refresh_enable=True,
                   erase_rect=None):
         """
-        Draw text at the row and column specified, assuming 6x8 text
-        (5x7 plus 1px spacing).
+        Draw text at the row and column specified, using 6x8 slots:
+        5x7 text (maximum, not monospaced) plus 1px spacing.
 
         For information on other parameters, see the draw_text_at
         documentation.
