@@ -597,12 +597,15 @@ class PicoLCD:
 
         return font_path, font_size, threshold
 
-    # optimized vertical scrolling text function that only scrolls
-    # when needed and only uses 8-pixel-high font so fits in buffer
-    # (and so stripe cache can be used).
     def push_text(self, text,
                   erase_behind_enable=False,
                   refresh_enable=True, spacing_x=1, scroll_count=1):
+        """
+        This is an optimized vertical scrolling text function (It only
+        scrolls when necessary and it uses an 8-pixel-high font that
+        fits into one buffer and fits into the stripe cache).
+        """
+
         results = None, None
         abs_x, abs_y = self._pos
         if not self.ready():
@@ -696,7 +699,8 @@ class PicoLCD:
                         # self._im.putalpha(0)
                     else:
                         # " " (space)
-                        space_w = 3  # less than width of letters (~6px)
+                        space_w = int(font_size*.4)
+                        # less than width of ~6px wide letters
 
                         # NOTE: append since this_sc is a reference!
                         # this_sc.append([0]*space_w)
@@ -800,10 +804,64 @@ class PicoLCD:
                   font_size=None, threshold=None,
                   erase_behind_enable=False, refresh_enable=True,
                   erase_rect=None):
+        """
+        Draw text at the row and column specified, assuming 5x8 text
+        (including 1px spacing).
+
+        For information on other parameters, see the draw_text_at
+        documentation.
+        """
         results = None, None
         pos = col, row  # col,row format is y,x order
         if self.dc["type"] == "graphics":
             pos = (col * 5, row * 8)
+        return self.draw_text_at(
+            pos, text, font=font,
+            font_size=font_size,
+            threshold=threshold,
+            erase_behind_enable=erase_behind_enable,
+            refresh_enable=refresh_enable,
+            erase_rect=erase_rect)
+
+    def draw_text_at(self, pos, text, font=None, font_size=None,
+                     font_path=None, threshold=None,
+                     erase_behind_enable=False, refresh_enable=True,
+                     erase_rect=None):
+        """
+        Draw text to the (framebuffer and) LCD.
+
+        Keyword arguments:
+        row,col -- the y,x location (in that order; though if
+            picolcd.dc["type"] is graphics, it will be a pixel location
+            where row is the middle of the letters)
+        font_path & font_size -- only available for devices where
+            picolcd.dc["type"] is "graphics"--font_path can only be ttf
+            for now.
+        threshold -- must be this opaque or higher--fine tuning may
+            improve readability for certain fonts at small sizes
+            (higher values make font slightly thinner). If None, .5
+            will be used (.02 if default font with font size > 8, to
+            catch edges of squares)
+        refresh_enable -- whether to write the invalidated area from the
+            framebuffers to the device (however, for text type devices,
+            this is ignored and data is always written)
+        erase_behind_enable -- erase behind (calculates rect unless
+            erase_rect is not None
+        erase_rect -- erase this rect first (turns on
+            erase_behind_enable automatically)
+
+        Returns:
+            Only if graphics type device, and only if
+            erase_behind_enable, the method returns rect actually drawn
+            in ((min_x, min_y), (max_x+1,max_y+1)) format (this can be
+            saved for your future use, such as if you do
+            refresh_enable=False just to get font metrics, then clear,
+            then draw what you really wanted, or just record the
+            numbers for future use so you don't have to repeat those
+            calls for each run--it is also not repeated inside of this
+            function if you pass an erase_rect)
+        """
+        results = None, None
         if (font_path is None) and (font is not None):
             meta = get_font_meta(font)
             if meta is None:
@@ -811,43 +869,6 @@ class PicoLCD:
                                  " doesn't matter):"
                                  " {}".format(font_meta.keys()))
             font_path = meta["path"]
-        return self.draw_text_at(
-            pos, text, font_path=font_path,
-            font_size=font_size,
-            threshold=threshold,
-            erase_behind_enable=erase_behind_enable,
-            refresh_enable=refresh_enable,
-            erase_rect=erase_rect)
-
-    # row,col: the y,x location (in that order; though if
-    #   picolcd.dc["type"] is graphics, it will be a pixel location
-    #   where row is the middle of the letters)
-    # font_path & font_size: only available for devices where
-    #   picolcd.dc["type"] is "graphics"--font_path can only be ttf
-    #   for now.
-    # threshold: must be this opaque or higher--fine tuning may improve
-    #   readability for certain fonts at small sizes (higher values make
-    #   font slightly thinner). If None, .5 will be used (.02 if default
-    #   font with font size > 8, to catch edges of squares)
-    # refresh_enable: whether to write the invalidated area from the
-    #   framebuffers to the device (however, for text type devices,
-    #   this is ignored and data is always written)
-    # erase_behind_enable: erase behind (calculates rect unless
-    #   erase_rect is not None
-    # erase_rect: erase this rect first (turns on erase_behind_enable
-    #   automatically)
-    # returns: only if graphics type device, and only if
-    #   erase_behind_enable, returns rect actually drawn in
-    #   ((min_x, min_y), (max_x+1,max_y+1)) format (this can be saved
-    #   for your future use, such as if you do refresh_enable=False just
-    #   to get font metrics, then clear, then draw what you really
-    #   wanted, or just record the numbers for future use so you don't
-    #   have to repeat those calls for each run--it is also not repeated
-    #   inside of this function if you pass an erase_rect)
-    def draw_text_at(self, pos, text, font_path=None, font_size=None,
-                     threshold=None, erase_behind_enable=False,
-                     refresh_enable=True, erase_rect=None):
-        results = None, None
 
         if erase_rect is not None:
             erase_behind_enable = True

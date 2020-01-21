@@ -9,14 +9,24 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Create a server so that the buffer remains the same for multiple
   programs and `lcd-cli` calls.
-- Allow setting font via `lcd-cli` using `--font=` argument.
+- Set the following new params using lcd-cli (or by sending JSON to the
+  http daemon directly, or by utilizing the PicoLCD push_action method
+  some other way):
+  - `font`
+  - `x`
+  - `y`
 
 ### Changed
 - Clean up Draw objects for fonts (resolves issue #1 core dump in
   `draw_text` presumably).
   - This may introduce some latency, but only the first time a
     character is used during the entire run of the framebuffer server.
-
+- `draw_lines` now accepts pixel locations as a top left corner.
+- The `push_text` method (such as utilized via the `push` option) now
+  acts upon `\t`, `\n`, and `\r` control characters (escaped or
+  literal).
+- Calculate the width of the space character (as `space_w`)
+  automatically in push_text (formerly it used `3` literally).
 
 ## [git] - 2020-01-20
 ### Added

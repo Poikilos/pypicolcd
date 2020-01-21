@@ -31,6 +31,7 @@ import json
 import asyncore
 import socket
 import urllib.parse
+from datetime import datetime
 
 LCD_PORT = 25664
 
@@ -156,8 +157,11 @@ class LCDServer(asyncore.dispatcher):
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
+            now = datetime.now()
+            now_s = now.strftime("%Y-%m-%d %H:%M:%S")
             sock, addr = pair
-            print('Incoming connection from {}'.format(repr(addr)))
+            print("{}: Incoming connection from"
+                  " {}".format(now_s, repr(addr)))
             handler = LCDRequestHandler(sock, self.daemon)
 
 class LCDDaemon(asyncore.dispatcher_with_send):
@@ -170,7 +174,7 @@ class LCDDaemon(asyncore.dispatcher_with_send):
         else:
             self.logger = logger
 
-    def show_lines(self, lines, font=None):
+    def show_lines(self, lines, font=None, x=0, y=0):
         shown_count = 0
         # if not self.p.ready():
         if self.p.dc is None:
@@ -184,7 +188,14 @@ class LCDDaemon(asyncore.dispatcher_with_send):
 
         if lines is None:
             lines = []
-        x, y = 0, -1
+        if (x is None):
+            x = 0
+        else:
+            x = int(x)
+        if (y is None):
+            y = 0
+        else:
+            y = int(y)
         # font = "Press Start"
         if font is None:
             font = self.p.default_font
@@ -194,8 +205,8 @@ class LCDDaemon(asyncore.dispatcher_with_send):
                                " found.".format(font))
         _LINES_MAX = self.p.get_height() // (meta["default_size"] + 1)
         for line in lines:
-            if y < _LINES_MAX:
-                y += 1
+            row = y // 8
+            if row < _LINES_MAX:
                 # p_dfs = self.p.default_font_size
                 # self.p.draw_text(
                 #     y,
@@ -205,9 +216,10 @@ class LCDDaemon(asyncore.dispatcher_with_send):
                 if line is None:
                     raise ValueError("line is None")
                 print("* showing '{}'...".format(line))
-                self.p.draw_text(y, x, line, font=font,
+                self.p.draw_text_at((x,y), line, font=font,
                             erase_behind_enable=True)
                 shown_count += 1
+                y += 8
             else:
                 raise ValueError("* Only {} line(s) fit(s) on the LCD,"
                                  " so '{}' will not"
@@ -229,7 +241,7 @@ class LCDDaemon(asyncore.dispatcher_with_send):
         res = {}
         lines = action.get("lines")
         allowed_names = ["background", "foreground", "brightness",
-                         "lines", "verbose", "font"]
+                         "lines", "verbose", "font", "x", "y"]
         allowed_commands = ["clear", "flash", "push"]
         for name, value in action.items():
             if name in allowed_names:
@@ -262,10 +274,16 @@ class LCDDaemon(asyncore.dispatcher_with_send):
             self.p.set_backlight(b)
 
         image_path = action.get("foreground")
-
+        x = action.get("x")
+        y = action.get("y")
         if image_path is not None:
             self.show_image(image_path)
         if action.get("push") is True:
+            if (x is not None) or (y is not None):
+                raise ValueError("x and y cannot be set along with the"
+                                 " push option, since push uses control"
+                                 " characters and scrolls"
+                                 " automatically")
             if font is not None:
                 raise ValueError("Custom fonts do not work with push,"
                                  " since it requires a fixed line"
@@ -282,7 +300,7 @@ class LCDDaemon(asyncore.dispatcher_with_send):
             except pypicolcd.DisconnectedError as e:
                 print("  * {}".format(e))
         else:
-            self.show_lines(lines, font=font)
+            self.show_lines(lines, font=font, x=x, y=y)
 
         image_path = action.get("foreground")
         if image_path is not None:
