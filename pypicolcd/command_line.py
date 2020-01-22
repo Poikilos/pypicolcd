@@ -96,9 +96,15 @@ class HTTPClient(asyncore.dispatcher):
     def handle_connect(self):
         pass
 
-    def handle_error(self):
-        msg = ("lcd-fb is not running or is otherwise"
-               " inaccessible at {}:{}.".format(self.host, self.port))
+    def handle_error(self, err_type, value, traceback):
+        msg = (
+            "lcd-fb at {}:{} responded with {}:{}.".format(
+                self.host,
+                self.port,
+                err_type,
+                value
+            )
+        )
         if self.results is not None:
             self.results["error"] = msg
         else:

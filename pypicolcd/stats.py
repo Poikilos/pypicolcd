@@ -209,7 +209,7 @@ def main():
     paths["root"] = "/"
     if platform.system() == "Windows":
         paths["root"] = "C:\\"
-    stats["root"] = "{} {}".format(freeSpaceAtFmt(paths["root"], unit=unit), unit)
+    stats["root"] = "{} {}  ".format(freeSpaceAtFmt(paths["root"], unit=unit), unit)
 
     stat_list = []
     for name in stat_order:

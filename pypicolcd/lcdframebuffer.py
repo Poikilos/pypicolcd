@@ -330,11 +330,10 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         return res
 
     def handle_signal(self, signum, frame):
-        self.p.draw_text(
-            1,
-            1,
-            "The framebuffer server recieved signal {}.".format(signum)
-        )
+        msg = "lcd-fb got signal {}.".format(signum)
+        if signum == 15:
+            msg = "lcd-fb got signal {} (terminate)".format(signum)
+        self.p.draw_text(1, 1, msg)
         logging.info('Exited')
 
 def main():

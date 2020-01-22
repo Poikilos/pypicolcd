@@ -559,19 +559,9 @@ class PicoLCD:
 
         if font_size is None:
             font_size = self.default_font_size
-        if threshold is None:
-            threshold = .5
-            for_msg = ""
-            if font_path is None and font_size > 8:
-                threshold = .02
-                for_msg = (" (adjusted from .5 to acommodate edges"
-                           " of blocks in ninepin font)")
-            self.blab("threshold was None so reverted to default"
-                      + for_msg + ": "
-                      + str(threshold))
-
+        default_font_path = font_meta[self.default_font]["path"]
         if font_path is None:
-            font_path = font_meta[self.default_font]["path"]
+            font_path = default_font_path
             self.blab("reverted to default font '"
                       + font_path + "'")
             if not os.path.isfile(font_path):
@@ -589,6 +579,23 @@ class PicoLCD:
                 is_ok = False
         if not is_ok:
             return None, None, None
+
+        if threshold is None:
+            threshold = .5
+            for_msg = ""
+            # if font_path is None and font_size > 8:
+            if font_path == default_font_path:
+                if font_size > 8:
+                    threshold = .02
+                else:
+                    threshold = .03
+                for_msg = (" (adjusted from .5 to {} to accommodate"
+                           " edges of blocks in ninepin"
+                           " font)".format(threshold))
+            self.blab("threshold was None so reverted to default"
+                      + for_msg + ": "
+                      + str(threshold))
+
         fss = str(font_size)
         if font_path not in self._f_cache:
             self._f_cache[font_path] = {}
