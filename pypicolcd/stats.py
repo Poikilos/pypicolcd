@@ -284,7 +284,7 @@ def main():
     time_args.extend(time_lines)
     time_args.append("--x=152")
     push_down = (len(stat_list)-len(time_lines))*8
-    time_args.append("--y={}".format(y+push_up))
+    time_args.append("--y={}".format(y+push_down))
     for k, v in params.items():
         if k != "clear":
             print("* appending --{}={}".format(k, v))
