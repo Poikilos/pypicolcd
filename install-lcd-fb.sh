@@ -36,7 +36,7 @@ echo "* using EXEC_START_ESCAPED: $EXEC_START_ESCAPED"
 # sed -i.bak "s/^\\(ExecStart=\).*/\\1$LCD_FB_PATH_ESCAPED/" /tmp/$name.tmp
 sed -i.bak "s/^\\(ExecStart=\).*/\\1$EXEC_START_ESCAPED/" /tmp/$name.tmp
 echo "Enter password for root:"
-su - -c "mv -f /tmp/$name.tmp /tmp/$name && mv -f /tmp/$name /etc/systemd/system/ && systemctl daemon-reload && systemctl enable lcd-fb && systemctl start lcd-fb"
+su - -c "mv -f /tmp/$name.tmp /tmp/$name && mv -f /tmp/$name /etc/systemd/system/ && echo '* daemon-reload...' && systemctl daemon-reload && systemctl enable lcd-fb && systemctl start lcd-fb"
 result=$?
 if [ $result -ne 0 ]; then
     echo "Return code was not zero but $result. Check: /etc/systemd/system/$name"

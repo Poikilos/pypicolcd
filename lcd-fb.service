@@ -12,8 +12,8 @@ User=owner
 Group=owner
 ExecStart=/bin/sh -c 'lcd-fb'
 Restart=on-failure
-TimeoutStartSec=10
-RestartSec=10
+TimeoutStartSec=5
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

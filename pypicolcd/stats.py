@@ -231,8 +231,9 @@ def main():
             if sign_i > -1:
                 ender = sign_i
                 value = arg[sign_i+1:]
-            name = arg[2:sign_i]
+            name = arg[2:ender]
             params[name] = value
+            print("* {}={}".format(name, value))
     y = params.get("y")
     if y is None:
         y = 39
@@ -246,13 +247,19 @@ def main():
     now_s = now.strftime("%Y-%m-%d %H:%M:%S")
     # args[len(args)-1] += "\t\t{}".format(now_s)
     batches = []
+    # if "--clear" in args:
+        # del args["--clear"]
     batches.append(args)
     time_args = [sys.argv[0]]
     time_args.append("@" + now_s)
-    time_args.append("--x=128")
+    time_args.append("--x=152")
     time_args.append("--y={}".format(y+16))
     for k, v in params.items():
-        time_args.append("--{}={}".format(k, v))
+        if k != "clear":
+            print("* appending --{}={}".format(k, v))
+            time_args.append("--{}={}".format(k, v))
+        # else:
+            # print("* won't clear twice.")
     batches.append(time_args)
     for current_args in batches:
         results = run(current_args)

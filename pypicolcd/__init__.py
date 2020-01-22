@@ -950,7 +950,7 @@ class PicoLCD:
                     # minimums & maximums, then draw the postponed text
                     # pixels (from pos_list):
                     results = (tuple(minimums),
-                               (maximums[0]+2, maximums[1]+2))
+                               (maximums[0]+1, maximums[1]+1))
                     # self.blab("* generate and draw the erase rect")
                     self.draw_rect(results, False)
                     # self.blab("* draw post_list")
