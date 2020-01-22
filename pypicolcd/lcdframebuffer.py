@@ -37,6 +37,10 @@ except ImportError:
     from urlparse import unquote
     from urllib import quote
 from datetime import datetime
+try:
+    import systemd.daemon
+except ModuleNotFoundError:
+    pass
 
 LCD_PORT = 25664
 
@@ -158,6 +162,11 @@ class LCDServer(asyncore.dispatcher):
         self.listen(5)
         print("* lcd-fb is listening on {}:{}".format(host, port))
         self.service = service
+        try:
+            systemd.daemon.notify('READY=1')
+        except NameError:
+            # The systemd module did not import.
+            pass
 
     def handle_accept(self):
         pair = self.accept()

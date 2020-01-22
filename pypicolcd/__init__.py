@@ -597,8 +597,7 @@ class PicoLCD:
 
         return font_path, font_size, threshold
 
-    def push_text(self, text,
-                  erase_behind_enable=False,
+    def push_text(self, text, erase_behind_enable=False,
                   refresh_enable=True, spacing_x=1, scroll_count=1):
         """
         This is an optimized vertical scrolling text function (It only
@@ -834,9 +833,14 @@ class PicoLCD:
         row,col -- the y,x location (in that order; though if
             picolcd.dc["type"] is graphics, it will be a pixel location
             where row is the middle of the letters)
-        font_path & font_size -- only available for devices where
-            picolcd.dc["type"] is "graphics"--font_path can only be ttf
-            for now.
+        font -- If you provide the name of a prepackaged font (case
+            insensitive), then you do not have to specify font_path.
+            This option only works if picolcd.dc["type"] is "graphics".
+        font_path -- Specify a ttf file. This option only works for
+            devices where picolcd.dc["type"] is "graphics".
+        font_size -- Specify a font size in points. This option is only
+            available for devices where picolcd.dc["type"] is
+            "graphics".
         threshold -- must be this opaque or higher--fine tuning may
             improve readability for certain fonts at small sizes
             (higher values make font slightly thinner). If None, .5
@@ -869,6 +873,10 @@ class PicoLCD:
                                  " doesn't matter):"
                                  " {}".format(font_meta.keys()))
             font_path = meta["path"]
+            if font_size is None:
+                default_size = meta.get("default_size")
+                if default_size is not None:
+                    font_size = default_size
 
         if erase_rect is not None:
             erase_behind_enable = True
@@ -941,7 +949,7 @@ class PicoLCD:
                     # minimums & maximums, then draw the postponed text
                     # pixels (from pos_list):
                     results = (tuple(minimums),
-                               (maximums[0]+1, maximums[1]+1))
+                               (maximums[0]+2, maximums[1]+2))
                     # self.blab("* generate and draw the erase rect")
                     self.draw_rect(results, False)
                     # self.blab("* draw post_list")

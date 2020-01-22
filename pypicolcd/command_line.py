@@ -55,7 +55,7 @@ def customDie(msg, exit_code=1, logger=None):
 
 class HTTPClient(asyncore.dispatcher):
 
-    def __init__(self, host, path, action, port=None):
+    def __init__(self, host, path, action, port=None, results=None):
         """
         Initialize a temporary one-action client (that closes after
         sending an object to a pypicolcd lcd-fb server and showing
@@ -69,7 +69,14 @@ class HTTPClient(asyncore.dispatcher):
         Keyword arguments:
         port -- Use this port on the remote machine (if None, default
             to pypicolcd.lcdframebuffer.LCD_PORT)
+        results -- The object will use this dictionary for output:
+            either response variables that the server sends as JSON, or
+            an "error" key generated locally. The server may also
+            generate an "error" key. Only if the response is good, the
+            results will contain an "info" key with the string "OK".
+            This parameter sets the self.results member.
         """
+        self.results = results
         if port is None:
             port = LCD_PORT
         asyncore.dispatcher.__init__(self)
@@ -90,8 +97,12 @@ class HTTPClient(asyncore.dispatcher):
         pass
 
     def handle_error(self):
-        print("* lcd-fb is not running or is otherwise"
-              " inaccessible at {}:{}.".format(self.host, self.port))
+        msg = ("lcd-fb is not running or is otherwise"
+               " inaccessible at {}:{}.".format(self.host, self.port))
+        if self.results is not None:
+            self.results["error"] = msg
+        else:
+            print("ERROR: " + msg)
         self.close()  # ONLY close on read in one-shot command scripts.
 
     def handle_close(self):
@@ -106,10 +117,14 @@ class HTTPClient(asyncore.dispatcher):
             res_s = res_bytes.decode()
             try:
                 res = json.loads(res_s)
-                print("* the server says: {}".format(res))
-                code = 0
-                if res.get("error") is not None:
-                    code = 1
+                if self.results is not None:
+                    for k, v in res.items():
+                        self.output[k] = v
+                else:
+                    print("* the server says: {}".format(res))
+                # code = 0
+                # if res.get("error") is not None:
+                    # code = 1
             except json.decoder.JSONDecodeError:
                 print("* ERROR: the server provided invalid JSON:"
                       " '{}'".format(res_s))
@@ -125,17 +140,17 @@ class HTTPClient(asyncore.dispatcher):
         # print("* sent '{}'".format(self.buffer[:sent].decode()))
         self.buffer = self.buffer[sent:]
 
-def main():
+def run(args):
     logger = logging.getLogger("lcd-cli")
     # lcdd = LCDFramebufferServer()
     action = {}
     lines = []
-    if len(sys.argv) < 1:
+    if len(args) < 1:
         sys.stdout.write("You didn't provide any parameters, so there"
                          " is nothing to do.")
         return 1
-    for i in range(1, len(sys.argv)):
-        arg = sys.argv[i]
+    for i in range(1, len(args)):
+        arg = args[i]
         if arg.startswith("--") and not arg.startswith("---"):
             if (len(arg) == 2):
                 customDie("There was a blank argument", logger=logger)
@@ -194,10 +209,22 @@ def main():
     url_args = "?json=" + quote(action_json, safe='')
     # print("* sending '{}'...".format(url_args))
     port = action.get("port")
-
-    client = HTTPClient(host, '/'+url_args, action, port=port)
+    results = {}
+    client = HTTPClient(host, '/'+url_args, action, port=port,
+                        results=results)
     asyncore.loop()
+    return results
+
+def main():
+    results = run(sys.argv)
+    if results.get("info") != "OK":
+        print("* {}".format(results))
+        return 1
+    else:
+        print('* The server responded with info: "OK"')
+    return 0
 
 if __name__ == "__main__":
+    # NOTE: You can't return anything, since you can't return outside
+    # of a function.
     main()
-

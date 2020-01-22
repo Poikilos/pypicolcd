@@ -1,14 +1,19 @@
 [Unit]
-description="Run lcd-fb as a specific user"
+Description="Run lcd-fb as a specific user"
 After=network.target
 
 [Service]
 Type=simple
+#Type=notify  # requires `import systemd` and `systemd.daemon.notify('READY=1')`
+Environment=PYTHONUNBUFFERED=1
 # Environment=statedir=/var/cache/lcd-fb
 # ExecStartPre=/usr/bin/mkdir -p ${statedir}
 User=owner
 Group=owner
-ExecStart=lcd-fb
+ExecStart=/bin/sh -c 'lcd-fb'
+Restart=on-failure
+TimeoutStartSec=10
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
