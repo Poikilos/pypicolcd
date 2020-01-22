@@ -44,6 +44,7 @@ except ImportError:
     from urllib import quote
 # TODO: gradually add features from example-cli.py
 
+
 def customDie(msg, exit_code=1, logger=None):
     print("")
     print("")
@@ -52,6 +53,7 @@ def customDie(msg, exit_code=1, logger=None):
     print("")
     print("")
     exit(exit_code)
+
 
 class HTTPClient(asyncore.dispatcher):
 
@@ -153,6 +155,7 @@ class HTTPClient(asyncore.dispatcher):
         # print("* sent '{}'".format(self.buffer[:sent].decode()))
         self.buffer = self.buffer[sent:]
 
+
 def run(args):
     logger = logging.getLogger("lcd-cli")
     # lcdd = LCDFramebufferServer()
@@ -228,6 +231,7 @@ def run(args):
     asyncore.loop()
     return results
 
+
 def main():
     results = run(sys.argv)
     if results.get("info") != "OK":
@@ -236,6 +240,7 @@ def main():
     else:
         print('* The server responded with info: "OK"')
     return 0
+
 
 if __name__ == "__main__":
     # NOTE: You can't return anything, since you can't return outside

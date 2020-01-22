@@ -23,10 +23,11 @@ if [ -f "$tmp_path" ]; then
     rm "$tmp_path" || customDie "rm \"$tmp_path\" failed."
 fi
 echo > "$tmp_path"
-for name in example-cli.py setup.py testing.pyw pypicolcd/lcdframebuffer.py pypicolcd/command_line.py pypicolcd/__init__.py
+# for name in example-cli.py setup.py testing.pyw pypicolcd/lcdframebuffer.py pypicolcd/command_line.py pypicolcd/stats.py pypicolcd/__init__.py
+for name in `ls *.py` `ls pypicolcd/*.py`
 do
 echo "* checking '$name'..."
-pycodestyle-3 $name > "$tmp_path"
+pycodestyle-3 $name  >> "$tmp_path"
 done
 
 if [ -f "`command -v outputinspector`" ]; then

@@ -55,10 +55,14 @@ print("* p.verbose_enable is " + str(p.verbose_enable))
 p.set_pixel((0, 0), True)
 x, y = 0, 0
 # p.draw_image((x, y), find_resource("images/maze.png"))
-# p.draw_image((x, y), find_resource("images/qbist.png"), brightness=20)
-# p.draw_image((x, y), find_resource("images/gradient-vertical.png"), threshold=float(30./255.))
-# p.draw_image((x, y), find_resource("images/gradient-vertical.png"), brightness=1)
-p.draw_image((x, y), find_resource("images/checker-gradient.png"), brightness=1)
+# p.draw_image((x, y), find_resource("images/qbist.png"),
+#              brightness=20)
+# p.draw_image((x, y), find_resource("images/gradient-vertical.png"),
+#              threshold=float(30./255.))
+# p.draw_image((x, y), find_resource("images/gradient-vertical.png"),
+#              brightness=1)
+p.draw_image((x, y), find_resource("images/checker-gradient.png"),
+             brightness=1)
 # NOTE: draw_text uses row,col format which is y,x order
 x = 0
 
@@ -73,7 +77,7 @@ for font_i in range(min(len(try_fonts), 4)):
     erase_behind_enable = False
     if name is None:
         name = p_df
-        threshold =  None
+        threshold = None
         meta = get_font_meta(name)
         msg = "The default font is {}pt {}.".format(p_dfs, name.title())
     else:
@@ -100,7 +104,11 @@ outline = ((x, y), (x+45, y+13))
 p.draw_rect(outline, True, filled=False)
 inner_rect = p.smaller_rect(outline)
 x, y = inner_rect[0]
-p.draw_text_at((x+1,y+2), datetime.now().ctime()[11:20], erase_rect=inner_rect)
+p.draw_text_at(
+    (x+1, y+2),
+    datetime.now().ctime()[11:20],
+    erase_rect=inner_rect
+)
 x_vel = 1
 y_vel = 1
 im_w = 8
@@ -140,7 +148,9 @@ while count < max_count:
     done = float(count) / float(max_count)
     # print(str(count))
     # if (prev_done is None) or (done - prev_done > .1):
-    sys.stderr.write("\r{:.0f}% ({} of {}): The square should be drawing over the LCD screen.".format(done * 100.0, count, max_count))
+    sys.stderr.write("\r{:.0f}% ({} of {}): The square should be"
+                     " drawing over the LCD"
+                     " screen.".format(done * 100.0, count, max_count))
     prev_done = done
 sys.stderr.write("\n")
 
@@ -158,4 +168,3 @@ while count < max_count:
     if fps is not None:
         # print("[ example.py ] fps: " + str(fps))
         p.draw_text(0, 0, "fps: " + str(fps), erase_behind_enable=true)
-

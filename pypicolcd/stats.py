@@ -8,16 +8,19 @@ from datetime import datetime
 
 _MAX_LINES = 4
 
-# See [Oz123's answer](https://stackoverflow.com/a/24186720)
-# Jun 12, 2014 (edited Oct 7, 2016; accessed Jan 14, 2020)
-# on https://stackoverflow.com/questions/17718449/determine-free-ram-in-python
+
 class FreeMemLinux(object):
     """
-    Non-cross platform way to get free memory on Linux. Note that this code
-    uses the `with ... as`, which is conditionally Python 2.5 compatible!
-    If for some reason you still have Python 2.5 on your system add in the
-head of your code, before all imports:
+    This is a non-cross platform way to get free memory on Linux. Note
+    that this code uses the `with ... as`, which is conditionally
+    Python 2.5 compatible! If for some reason you still have Python 2.5
+    on your system add in the head of your code, before all imports:
     from __future__ import with_statement
+
+    according to [Oz123's answer](https://stackoverflow.com/a/24186720)
+    Jun 12, 2014 (edited Oct 7, 2016; accessed Jan 14, 2020)
+    on <https://stackoverflow.com/questions/17718449/
+    determine-free-ram-in-python>
     """
 
     def __init__(self, unit='kB'):
@@ -87,7 +90,7 @@ head of your code, before all imports:
     @property
     def user_free(self):
         """This is the free memory available for the user"""
-        return self._convert *(self._free + self._buff + self._cached)
+        return self._convert * (self._free + self._buff + self._cached)
 
     @property
     def swap(self):
@@ -101,13 +104,15 @@ head of your code, before all imports:
     def swap_used(self):
         return self._convert * self._swapu
 
+
 def show_lines_for_headless(lines):
     """
     Show lines on tty1. This writes text lines to picoLCD screens if the
     server has no video card (tested on Debian 10 netinstall with no
     special picoLCD-related packages).
     """
-    # See https://stackoverflow.com/questions/20894969/python-reading-and-writing-to-tty
+    # See <https://stackoverflow.com/questions/20894969/
+    # python-reading-and-writing-to-tty>
     # (uses mode os.RDRW)
     tty = os.open("/dev/tty1", os.O_WRONLY)
     count = 0
@@ -123,17 +128,26 @@ def show_lines_for_headless(lines):
         os.write(tty, b"\n")
     os.close(tty)
 
+
 def show_lines(lines):
+    # TODO: This is not tested. Use run from from pypicolcd.command_line
+    # directly instead.
     results = {"error": "contacting the server did not complete"}
     # See <https://www.saltycrane.com/blog/2008/09/
     # how-get-stdout-and-stderr-using-python-subprocess-module/>
-    wgproc = subprocess.Popen(['wget', '-r', '--tries=10', 'http://fly.srk.fer.hr/', '-o', 'log'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    args = ['lcd-cli']
+    args.extend(lines)
+    wgproc = subprocess.Popen(args, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT)
     (standardout, junk) = wgproc.communicate()
+    results = json.loads(standardout)
     return results
+
 
 k_div = 1024
 m_div = k_div * 1024
 g_giv = m_div * 1024
+
 
 def freeSpaceAt(path, unit="bytes", places=2):
     """
@@ -152,13 +166,16 @@ def freeSpaceAt(path, unit="bytes", places=2):
     Returns:
         Get a float (integer if bytes) representing free space.
     """
-    # See Mechanical snail's Sep 8, 2012 answer (edited by Mark Amery Apr 13, 2019)
-    # on https://stackoverflow.com/questions/4260116/find-size-and-free-space-of-the-filesystem-containing-a-given-file
+    # See Mechanical snail's Sep 8, 2012 answer (edited by Mark Amery
+    # Apr 13, 2019)
+    # on <https://stackoverflow.com/questions/4260116/
+    # find-size-and-free-space-of-the-filesystem-containing-a-given-
+    # file>
     statvfs = os.statvfs(path)
-    # statvfs.f_frsize * statvfs.f_blocks     # Size of filesystem in bytes
-    # statvfs.f_frsize * statvfs.f_bfree      # Actual number of free bytes
-    # statvfs.f_frsize * statvfs.f_bavail     # Number of free bytes that ordinary users
-                                              # are allowed to use (excl. reserved space)
+    # statvfs.f_frsize * statvfs.f_blocks     # Size in bytes
+    # statvfs.f_frsize * statvfs.f_bfree      # Actual free bytes
+    # statvfs.f_frsize * statvfs.f_bavail     # free bytes for users
+    #                                           (excl. reserved space)
     try:
         bfree = long(statvfs.f_bfree) * long(statvfs.f_bsize)
     except NameError:
@@ -184,6 +201,7 @@ def freeSpaceAtFmt(path, unit="bytes", places=2):
     n = freeSpaceAt(path, unit=unit)
     return fmt.format(n)
 
+
 def main():
     # show_lines_for_headless(["Hello World!"])
     stat_order = ["Memory", "Home", "root"]
@@ -200,16 +218,25 @@ def main():
     # freemem = FreeMemLinux(unit='%')
     unit = 'mb'
     freemem = FreeMemLinux(unit=unit)
-    stats["Memory"] = "{:.2f} {}".format(freemem.total - freemem.used, unit)
+    stats["Memory"] = "{:.2f} {}".format(
+        freemem.total - freemem.used,
+        unit
+    )
     # Assumes home is sdb1:
     if paths["Home"] is not None:
-        stats["Home"] = "{} {}".format(freeSpaceAtFmt(paths["Home"], unit=unit), unit)
+        stats["Home"] = "{} {}".format(
+            freeSpaceAtFmt(paths["Home"], unit=unit),
+            unit
+        )
     else:
         stats["Home"] = "?"
     paths["root"] = "/"
     if platform.system() == "Windows":
         paths["root"] = "C:\\"
-    stats["root"] = "{} {}  ".format(freeSpaceAtFmt(paths["root"], unit=unit), unit)
+    stats["root"] = "{} {}  ".format(
+        freeSpaceAtFmt(paths["root"], unit=unit),
+        unit
+    )
 
     stat_list = []
     for name in stat_order:
@@ -248,12 +275,16 @@ def main():
     # args[len(args)-1] += "\t\t{}".format(now_s)
     batches = []
     # if "--clear" in args:
-        # del args["--clear"]
+    #     del args["--clear"]
     batches.append(args)
     time_args = [sys.argv[0]]
-    time_args.append("@" + now_s)
+    time_lines = []
+    time_lines.append("on {}".format(os.uname()[1]))
+    time_lines.append("@" + now_s)
+    time_args.extend(time_lines)
     time_args.append("--x=152")
-    time_args.append("--y={}".format(y+16))
+    push_down = (len(stat_list)-len(time_lines))*8
+    time_args.append("--y={}".format(y+push_up))
     for k, v in params.items():
         if k != "clear":
             print("* appending --{}={}".format(k, v))
@@ -265,6 +296,8 @@ def main():
         results = run(current_args)
         if results.get("info") != "OK":
             print('* {}'.format(results))
+            print("  * in response to"
+                  " '{}'".format(" ".join(current_args)))
             if "--headless" in sys.argv:
                 print("* attempting to write to tty1 (which could be a picoLCD"
                       " display on a headless server)...")

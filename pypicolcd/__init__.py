@@ -951,7 +951,6 @@ class PicoLCD:
                                 on_count += 1  # for debugging only
                                 self.set_pixel((dest_x, dest_y), True,
                                                refresh_enable=False)
-                # TODO: draw text to PIL Image
                 if erase_behind_enable and (erase_rect is None):
                     # generate and draw the erase rect using the
                     # minimums & maximums, then draw the postponed text

@@ -45,6 +45,7 @@ except ImportError:
 
 LCD_PORT = 25664
 
+
 def customDie(msg, exit_code=1, logger=None):
     print("")
     print("")
@@ -53,6 +54,7 @@ def customDie(msg, exit_code=1, logger=None):
     print("")
     print("")
     exit(exit_code)
+
 
 class LCDRequestHandler(asyncore.dispatcher_with_send):
     def __init__(self, sock, service):
@@ -90,11 +92,11 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
                 params_s = url_path[mark_i+1:]
                 url_path = url_path[:mark_i]
             # else:
-                # print("* there are no params in the path.")
+            #     print("* there are no params in the path.")
             # if len(params_s) < 1:
-                # print("* WARNING: url_path's ? is at"
-                      # " {}".format(mark_i))
-                # print("* WARNING: and {} is at 2".format(url_path[2]))
+            #     print("* WARNING: url_path's ? is at"
+            #           " {}".format(mark_i))
+            #     print("* WARNING: and {} is at 2".format(url_path[2]))
             # print("* as '{}'".format(params_s))
             chunks = params_s.split("&")
             params = {}
@@ -116,7 +118,7 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
                         req = json.loads(value)
                         res = self.service.push_action(req)
                         # print("* The server got a JSON object:"
-                              # " {}".format(req))
+                        #       " {}".format(req))
                         res_bytes = json.dumps(res).encode()
                         self.send(res_bytes)
                     except json.decoder.JSONDecodeError:
@@ -142,16 +144,17 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
                 else:
                     params[name] = value
             # try:
-                # req = json.loads(req_s)
-                # res = self.service.push_action(req)
-                # res_bytes = json.dumps(res).encode()
-                # self.send(res_bytes)
+            #     req = json.loads(req_s)
+            #     res = self.service.push_action(req)
+            #     res_bytes = json.dumps(res).encode()
+            #     self.send(res_bytes)
             # except json.decoder.JSONDecodeError:
-                # print("* the client provided invalid json:"
-                      # " '{}'".format(req_s))
+            #     print("* the client provided invalid json:"
+            #           " '{}'".format(req_s))
         else:
             raise ValueError("reroute_get can only handle strings"
                              " starting with 'GET /'")
+
 
 # See https://docs.python.org/2/library/asyncore.html
 class LCDServer(asyncore.dispatcher):
@@ -178,6 +181,7 @@ class LCDServer(asyncore.dispatcher):
             print("{}: Incoming connection from"
                   " {}".format(now_s, repr(addr)))
             handler = LCDRequestHandler(sock, self.service)
+
 
 class LCDFramebufferServer(asyncore.dispatcher_with_send):
     p = None
@@ -231,8 +235,8 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
                 if line is None:
                     raise ValueError("line is None")
                 print("* showing '{}'...".format(line))
-                self.p.draw_text_at((x,y), line, font=font,
-                            erase_behind_enable=True)
+                self.p.draw_text_at((x, y), line, font=font,
+                                    erase_behind_enable=True)
                 shown_count += 1
                 y += 8
             else:
@@ -311,7 +315,7 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
                     print("* showing {}...".format(all_text))
                     self.p.push_text(all_text)
                     # for line in lines:
-                        # self.p.push_text(line)
+                    #     self.p.push_text(line)
             except pypicolcd.DisconnectedError as e:
                 print("  * {}".format(e))
         else:
@@ -334,7 +338,11 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         if signum == 15:
             msg = "lcd-fb got signal {} (terminate)".format(signum)
         self.p.draw_text(1, 1, msg)
+        now = datetime.now()
+        now_s = now.strftime("%Y-%m-%d %H:%M:%S")
+        self.p.draw_text(2, 1, "@" + now_s)
         logging.info('Exited')
+
 
 def main():
     logger = logging.getLogger('lcd-fb')
@@ -418,6 +426,7 @@ def main():
     #     # if (sendData == "Bye" or sendData == "bye"):
     #         # break
     # c.close()
+
 
 if __name__ == "__main__":
     main()
