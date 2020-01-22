@@ -1,5 +1,5 @@
 [Unit]
-Description="Run lcd-fb as a specific user"
+Description="pypicolcd LCD Framebuffer Service"
 After=network.target
 
 [Service]

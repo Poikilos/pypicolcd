@@ -34,13 +34,15 @@ except ImportError:
     raise ImportError("pypicolcd requires pyusb (see"
                       " \"Install\" in README.md)")
 
+# TODO: remove about_msg and use pypicolcd.__doc__ (generated from
+# docstring above) instead?
+
 about_msg = """
 pypicolcd  Copyright (C) 2018  Jake Gustafson
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software, and you are welcome to redistribute it
 under certain conditions; open LICENSE file in text editor for details.
 """
-# TODO: remove about_msg and use pypicolcd.__doc__ instead?
 
 # See
 # <https://linuxconfig.org/

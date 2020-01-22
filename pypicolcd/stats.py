@@ -244,11 +244,14 @@ def main():
             stat_list.append("{}: {}".format(name, stats[name]))
         else:
             stat_list.append("{}: missing".format(name))
-    args = sys.argv
+    args = [sys.argv[0]]
     params = {}
 
     # Parse the params for filtering only
     # --still pass them as terminal params.
+    custom_lines = []
+    custom_params = {}
+    redirect_custom_params = ["x", "y"]
     for i in range(1, len(sys.argv)):
         arg = sys.argv[i]
         if arg.startswith("--") and not arg.startswith("---"):
@@ -261,23 +264,50 @@ def main():
             name = arg[2:ender]
             params[name] = value
             print("* {}={}".format(name, value))
+            if name in redirect_custom_params:
+                custom_params[name] = value
+            else:
+                args.append(arg)
+        else:
+            custom_lines.append(arg)
+    stat_args = []
+    stat_args.extend(args)
+    custom_args = []
+    custom_args.extend(args)
+    try:
+        custom_args.remove("--clear")
+    except ValueError:
+        pass
+    for k, v in custom_params.items():
+        custom_args.append("--{}={}".format(k, v))
+    custom_args.extend(custom_lines)
+
     y = params.get("y")
     if y is None:
         y = 39
     else:
         y = int(y)
-    if "y" not in params:
-        args.append("--y={}".format(y))
 
-    args.extend(stat_list)
+    if "y" not in params:
+        stat_args.append("--y={}".format(y))
+
+    # for k, v in params.items():
+        # args.append("--{}={}".format(k, v))
+
+    stat_args.extend(stat_list)
     now = datetime.now()
     now_s = now.strftime("%Y-%m-%d %H:%M:%S")
     # args[len(args)-1] += "\t\t{}".format(now_s)
-    batches = []
+    batches = {}
     # if "--clear" in args:
     #     del args["--clear"]
-    batches.append(args)
-    time_args = [sys.argv[0]]
+    batches["stats"] = stat_args
+    time_args = []
+    time_args.extend(args)
+    try:
+        time_args.remove("--clear")
+    except ValueError:
+        pass
     time_lines = []
     time_lines.append("on {}".format(os.uname()[1]))
     time_lines.append("@" + now_s)
@@ -285,25 +315,43 @@ def main():
     time_args.append("--x=152")
     push_down = (len(stat_list)-len(time_lines))*8
     time_args.append("--y={}".format(y+push_down))
-    for k, v in params.items():
-        if k != "clear":
-            print("* appending --{}={}".format(k, v))
-            time_args.append("--{}={}".format(k, v))
-        # else:
-            # print("* won't clear twice.")
-    batches.append(time_args)
-    for current_args in batches:
-        results = run(current_args)
+    # for k, v in params.items():
+    #     if k != "clear":
+    #         # print("* appending --{}={}".format(k, v))
+    #         time_args.append("--{}={}".format(k, v))
+    #     # else:
+    #         # print("* won't clear twice.")
+    batches["time"] = time_args
+    order = ["time", "stats"]
+    if len(custom_lines) > 0:
+        # for k, v in params.items():
+        #     if (k != "clear") and (k != "y"):
+        #         print("* more lines: --{}={}".format(k, v))
+        #         custom_lines.append("--{}={}".format(k, v))
+        batches["custom"] = custom_args
+        order.append("custom")
+        print("{} custom line(s)".format(len(custom_lines)))
+    else:
+        print("There are no custom lines.")
+    for key in order:
+        print("")
+        these_args = batches[key]
+        results = run(these_args)
         if results.get("info") != "OK":
             print('* {}'.format(results))
-            print("  * in response to"
-                  " '{}'".format(" ".join(current_args)))
+            print("  * in response to showing {}:"
+                  " '{}' (arg count: {})".format(key,
+                                                 "' '".join(these_args),
+                                                 len(these_args)))
             if "--headless" in sys.argv:
                 print("* attempting to write to tty1 (which could be a picoLCD"
                       " display on a headless server)...")
                 show_lines_for_headless(stat_list)
         else:
             print('* {}'.format(results))
+            print("  * in response to"
+                  " '{}' (arg count {})".format("' '".join(these_args),
+                                                len(these_args)))
 
 
 if __name__ == "__main__":

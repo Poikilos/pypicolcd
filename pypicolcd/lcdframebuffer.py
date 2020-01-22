@@ -312,7 +312,7 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
             try:
                 if lines is not None:
                     all_text = " ".join(lines)
-                    print("* showing {}...".format(all_text))
+                    print("* pushing {}...".format(all_text))
                     self.p.push_text(all_text)
                     # for line in lines:
                     #     self.p.push_text(line)
@@ -334,14 +334,21 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         return res
 
     def handle_signal(self, signum, frame):
-        msg = "lcd-fb got signal {}.".format(signum)
-        if signum == 15:
-            msg = "lcd-fb got signal {} (terminate)".format(signum)
+        # Any signal should terminate it, since the handler is only
+        # set for the signals you want (see signal.signal below, which
+        # sets the handler).
+        # msg = "lcd-fb got signal {}.".format(signum)
+        # exit_signals = [signal.SIGINT, signal.SIGQUIT]
         self.p.draw_text(1, 1, msg)
         now = datetime.now()
         now_s = now.strftime("%Y-%m-%d %H:%M:%S")
         self.p.draw_text(2, 1, "@" + now_s)
-        logging.info('Exited')
+        # if signum in exit_signals:
+        msg = "lcd-fb will close due to signal {} ".format(signum)
+        # logging.info('* closing...')
+        print("* " + msg)
+        self.stop()
+        # exit(0)
 
 
 def main():

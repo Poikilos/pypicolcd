@@ -220,6 +220,7 @@ def run(args):
     if "host" in action:
         del action["host"]
 
+    print("* sending '{}'...".format(action))
     action_json = json.dumps(action)
     url_args = ""
     url_args = "?json=" + quote(action_json, safe='')
