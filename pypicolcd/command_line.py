@@ -186,7 +186,7 @@ def main():
     url_args = ""
     url_args = "?json=" + quote(action_json, safe='')
     host = action.get("host")
-    if host is none:
+    if host is None:
         host = "localhost"
     port = action.get("port")
 
