@@ -12,8 +12,20 @@ Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by import
 * Draw without dependencies other than pyusb and PIL
 * Fault-tolerant: draw anything beyond range of LCD and will not crash nor miss good parts
 * Image Dithering: draw color image, and it will automatically be dithered to 1-bit by luminosity (threshold is also possible)
+* Persistent Framebuffer: The lcd-fb script (which runs lcdframebuffer.py) runs a server. The lcd-cli script (which runs command_line.py) is the client.
+  - By default, they only communicate with localhost. To use the server over the LAN:
+    - On the client, specify `lcd-cli --host ...` where `...` is the server's IP address after doing the following steps:
+    - On the server, ensure incoming traffic on port 25664 is allowed.
+    - On the server, specify your IP address when running the server (change the service file if you run it as a service):
+```bash
+lcd-fb --localhost=`hostname -i`
+```
+where `\`hostname -i\`` is your IP address.
 
-This module is different than pyusblcd, since that requires the (non-Python) picoLCD driver and this module does not.
+## Compare
+- This module does not require a (non-Python kernel) driver unlike pyusblcd in the PyPI repository.
+- This module has a persistent framebuffer server unlike other driverless modules named similarly such as [JamesTheAwesomeDude/pyPicoLCD](https://github.com/JamesTheAwesomeDude/pyPicoLCD) and [itszero/picoLCD256x64](https://github.com/itszero/picoLCD256x64).
+- This module uses pyusb for driverless access and implements a lcd-cli command similarly to how [rebeccaskinner/lcddeamon](https://github.com/rebeccaskinner/lcddeamon) uses libusb for driverless access and implements a usblcd command, but that daemon is written in c.
 
 ## Install
 - pypicolcd uses Python 3, and though has some Python 2 considerations, is not thoroughly tested on Python 2. Therefore, make sure virtualenv is Python 3 by default, otherwise follow a guide to use the Python 3 virtualenv (such as [Installing and using virtualenv with Python 3](https://help.dreamhost.com/hc/en-us/articles/115000695551-Installing-and-using-virtualenv-with-Python-3)).
