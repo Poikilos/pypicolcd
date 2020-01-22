@@ -96,13 +96,17 @@ class HTTPClient(asyncore.dispatcher):
     def handle_connect(self):
         pass
 
-    def handle_error(self, err_type, value, traceback):
+    def handle_error(self):
+        # See
+        # https://github.com/python/cpython/blob/master/Lib/asyncore.py
+        nil, t, v, tbinfo = compact_traceback()
+
         msg = (
             "lcd-fb at {}:{} responded with {}:{}.".format(
                 self.host,
                 self.port,
-                err_type,
-                value
+                t,
+                v
             )
         )
         if self.results is not None:
