@@ -15,7 +15,8 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
   - `font`
   - `x`
   - `y`
-- Install as service on linux using the new "install-lcd-fb.sh" script.
+- Install as service on GNU+Linux systems using the new
+  "install-lcd-fb.sh" script.
 
 ### Changed
 - Clean up Draw objects for fonts (resolves issue #1 core dump in

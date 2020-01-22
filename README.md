@@ -64,6 +64,17 @@ deactivate
   - pyusb (formerly `sudo python3 -m pip install pyusb`)
   - PIL (formerly `sudo python3 -m pip install Pillow` or `sudo python -m pip install Pillow` or on arch, `pacman -Syu python-pillow`)
 
+- Then you must run lcd-fb on startup. For linux, you can do the
+  following:
+  - `cd ~ && git clone https://github.com/poikilos/pypicolcd.git`
+  - `cd pypicolcd`
+  - `./install-lcd-fb.sh`
+  - edit the following script if your LAN is something other
+    than 192.168.1.*:
+  - `"./allow port 25664 only from 192.168.1 network.sh"`
+- You must also allow the unpriveleged user to send data on the USB port
+  if the server prompts you with instructions on how to do that. Run
+  example-cli.py or testing.pyw to view the instructions for linux.
 
 ## Usage
 * Draw Image:

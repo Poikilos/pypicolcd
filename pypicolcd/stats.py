@@ -11,11 +11,11 @@ _MAX_LINES = 4
 
 class FreeMemLinux(object):
     """
-    This is a non-cross platform way to get free memory on Linux. Note
-    that this code uses the `with ... as`, which is conditionally
-    Python 2.5 compatible! If for some reason you still have Python 2.5
-    on your system add in the head of your code, before all imports:
-    from __future__ import with_statement
+    This is a non-cross platform way to get free memory on GNU+Linux
+    systems. Note that this code uses the `with ... as`, which is
+    conditionally Python 2.5 compatible! If for some reason you still
+    have Python 2.5 on your system add in the head of your code, before
+    all imports: from __future__ import with_statement
 
     according to [Oz123's answer](https://stackoverflow.com/a/24186720)
     Jun 12, 2014 (edited Oct 7, 2016; accessed Jan 14, 2020)
