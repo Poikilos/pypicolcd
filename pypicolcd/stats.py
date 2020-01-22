@@ -274,45 +274,38 @@ def main():
     stat_args.extend(args)
     custom_args = []
     custom_args.extend(args)
-    try:
-        custom_args.remove("--clear")
-    except ValueError:
-        pass
     for k, v in custom_params.items():
         custom_args.append("--{}={}".format(k, v))
     custom_args.extend(custom_lines)
 
-    y = params.get("y")
-    if y is None:
-        y = 39
-    else:
-        y = int(y)
+    # y = params.get("y")
+    # if y is None:
+        # y = 39
+    # else:
+        # y = int(y)
+    y = 39
 
-    if "y" not in params:
-        stat_args.append("--y={}".format(y))
+    # if "y" not in params:
+    stat_args.append("--x=0")
+    stat_args.append("--y={}".format(y))
 
     # for k, v in params.items():
-        # args.append("--{}={}".format(k, v))
+    #     args.append("--{}={}".format(k, v))
 
     stat_args.extend(stat_list)
     now = datetime.now()
     now_s = now.strftime("%Y-%m-%d %H:%M:%S")
     # args[len(args)-1] += "\t\t{}".format(now_s)
     batches = {}
-    # if "--clear" in args:
-    #     del args["--clear"]
     batches["stats"] = stat_args
     time_args = []
     time_args.extend(args)
-    try:
-        time_args.remove("--clear")
-    except ValueError:
-        pass
     time_lines = []
     time_lines.append("on {}".format(os.uname()[1]))
     time_lines.append("@" + now_s)
     time_args.extend(time_lines)
-    time_args.append("--x=152")
+    time_args.append("--x=153")
+    # x=153 puts rightmost pixel of "@____-%m-%d %H:%M:%S" at the edge
     push_down = (len(stat_list)-len(time_lines))*8
     time_args.append("--y={}".format(y+push_down))
     # for k, v in params.items():
@@ -333,9 +326,16 @@ def main():
         print("{} custom line(s)".format(len(custom_lines)))
     else:
         print("There are no custom lines.")
+    first = True
     for key in order:
         print("")
         these_args = batches[key]
+        if not first:
+            try:
+                these_args.remove("--clear")
+            except ValueError:
+                pass
+        first = False
         results = run(these_args)
         if results.get("info") != "OK":
             print('* {}'.format(results))
