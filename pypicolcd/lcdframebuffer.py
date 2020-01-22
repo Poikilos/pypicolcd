@@ -30,7 +30,10 @@ import logging
 import json
 import asyncore
 import socket
-import urllib.parse
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 from datetime import datetime
 
 LCD_PORT = 25664
@@ -45,9 +48,9 @@ def customDie(msg, exit_code=1, logger=None):
     exit(exit_code)
 
 class LCDRequestHandler(asyncore.dispatcher_with_send):
-    def __init__(self, sock, daemon):
+    def __init__(self, sock, service):
         asyncore.dispatcher_with_send.__init__(self, sock)
-        self.daemon = daemon
+        self.service = service
 
     # See https://docs.python.org/2/library/asyncore.html
     def handle_read(self):
@@ -96,7 +99,7 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
                 if len(parts) >= 1:
                     name = parts[0]
                 if len(parts) >= 2:
-                    value = urllib.parse.unquote(parts[1])
+                    value = urlparse.unquote(parts[1])
                 if len(parts) > 2:
                     print("  * ERROR: malformed URL param:"
                           " '{}'".format(chunk))
@@ -104,7 +107,7 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
                 if name == 'json':
                     try:
                         req = json.loads(value)
-                        res = self.daemon.push_action(req)
+                        res = self.service.push_action(req)
                         # print("* The server got a JSON object:"
                               # " {}".format(req))
                         res_bytes = json.dumps(res).encode()
@@ -133,7 +136,7 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
                     params[name] = value
             # try:
                 # req = json.loads(req_s)
-                # res = self.daemon.push_action(req)
+                # res = self.service.push_action(req)
                 # res_bytes = json.dumps(res).encode()
                 # self.send(res_bytes)
             # except json.decoder.JSONDecodeError:
@@ -145,14 +148,14 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
 
 # See https://docs.python.org/2/library/asyncore.html
 class LCDServer(asyncore.dispatcher):
-    def __init__(self, host, port, daemon):
+    def __init__(self, host, port, service):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.bind((host, port))
         self.listen(5)
-        print("* lcd-daemon is listening on {}:{}".format(host, port))
-        self.daemon = daemon
+        print("* lcd-fb is listening on {}:{}".format(host, port))
+        self.service = service
 
     def handle_accept(self):
         pair = self.accept()
@@ -162,15 +165,15 @@ class LCDServer(asyncore.dispatcher):
             sock, addr = pair
             print("{}: Incoming connection from"
                   " {}".format(now_s, repr(addr)))
-            handler = LCDRequestHandler(sock, self.daemon)
+            handler = LCDRequestHandler(sock, self.service)
 
-class LCDDaemon(asyncore.dispatcher_with_send):
+class LCDFramebufferServer(asyncore.dispatcher_with_send):
     p = None
 
     def __init__(self, logger=None):
         self.p = PicoLCD()
         if logger is None:
-            logging.getLogger('lcd-daemon')
+            logging.getLogger('lcd-fb')
         else:
             self.logger = logger
 
@@ -318,12 +321,12 @@ class LCDDaemon(asyncore.dispatcher_with_send):
         self.p.draw_text(
             1,
             1,
-            "The daemon recieved signal {}.".format(signum)
+            "The framebuffer server recieved signal {}.".format(signum)
         )
         logging.info('Exited')
 
 def main():
-    logger = logging.getLogger('lcd-daemon')
+    logger = logging.getLogger('lcd-fb')
     action = {}
     lines = []
     for i in range(1, len(sys.argv)):
@@ -355,7 +358,7 @@ def main():
             lines.append(arg)
     if len(lines) > 0:
         action["lines"] = lines
-    lcdd = LCDDaemon(logger=logger)
+    lcdd = LCDFramebufferServer(logger=logger)
 
     # See <https://raspberrypi.stackexchange.com/questions/77738/
     # how-to-exit-a-python-daemon-cleanly>

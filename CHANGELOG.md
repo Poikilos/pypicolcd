@@ -10,11 +10,12 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 - Create a server so that the buffer remains the same for multiple
   programs and `lcd-cli` calls.
 - Set the following new params using lcd-cli (or by sending JSON to the
-  http daemon directly, or by utilizing the PicoLCD push_action method
-  some other way):
+  http framebuffer server directly, or by utilizing the PicoLCD
+  push_action method some other way):
   - `font`
   - `x`
   - `y`
+- Install as service on linux using the new "install-lcd-fb.sh" script.
 
 ### Changed
 - Clean up Draw objects for fonts (resolves issue #1 core dump in
@@ -27,6 +28,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
   literal).
 - Calculate the width of the space character (as `space_w`)
   automatically in push_text (formerly it used `3` literally).
+- rename lcd-daemon to lcd-fb
 
 ## [git] - 2020-01-20
 ### Added

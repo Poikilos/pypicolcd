@@ -26,8 +26,8 @@ from datetime import datetime
 import random
 import timeit
 import pypicolcd
-# from pypicolcd.lcddaemon import LCDDaemon
-from pypicolcd.lcddaemon import LCD_PORT
+# from pypicolcd.lcddaemon import LCDFramebufferServer
+from pypicolcd.lcdframebuffer import LCD_PORT
 from timeit import default_timer as best_timer
 import sys
 import json
@@ -36,7 +36,10 @@ import logging
 import asyncore
 import socket
 import json
-import urllib.parse
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 # TODO: gradually add features from example-cli.py
 
 def customDie(msg, exit_code=1, logger=None):
@@ -50,18 +53,34 @@ def customDie(msg, exit_code=1, logger=None):
 
 class HTTPClient(asyncore.dispatcher):
 
-    def __init__(self, host, path, action):
+    def __init__(self, host, path, action, port=None):
+        """
+        Initialize a temporary one-action client (that closes after
+        sending an object to a pypicolcd lcd-fb server and showing
+        the response).
+
+        Sequential arguments:
+        host -- Connect to this hostname or IP address.
+        path -- Connect to this path on the server (normally /)
+        action -- Send this object as JSON to the server.
+
+        Keyword arguments:
+        port -- Use this port on the remote machine (if None, default
+            to pypicolcd.lcdframebuffer.LCD_PORT)
+        """
+        if port is None:
+            port = LCD_PORT
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = host
-        self.port = LCD_PORT
-        self.connect( (host, LCD_PORT) )
+        self.port = port
+        self.connect( (host, port) )
         buffer_s = 'GET {} HTTP/1.0\r\n\r\n'.format(path)
         self.buffer = buffer_s.encode()
         # self.buffer2 = json.dumps(action).encode()
         # try:
         # except ConnectionRefusedError:
-        #     print("* the lcd-daemon is not running.")
+        #     print("* the lcd-fb server is not running.")
         #     self.close()
         #     return
 
@@ -69,7 +88,7 @@ class HTTPClient(asyncore.dispatcher):
         pass
 
     def handle_error(self):
-        print("* lcd-daemon is not running or is otherwise"
+        print("* lcd-fb is not running or is otherwise"
               " inaccessible at {}:{}.".format(self.host, self.port))
         self.close()  # ONLY close on read in one-shot command scripts.
 
@@ -106,7 +125,7 @@ class HTTPClient(asyncore.dispatcher):
 
 def main():
     logger = logging.getLogger("lcd-cli")
-    # lcdd = LCDDaemon()
+    # lcdd = LCDFramebufferServer()
     action = {}
     lines = []
     if len(sys.argv) < 1:
@@ -163,9 +182,13 @@ def main():
     # s.close()
     action_json = json.dumps(action)
     url_args = ""
-    url_args = "?json=" + urllib.parse.quote(action_json, safe='')
+    url_args = "?json=" + urlparse.quote(action_json, safe='')
+    host = action.get("host")
+    if host is none:
+        host = "localhost"
+    port = action.get("port")
 
-    client = HTTPClient('localhost', '/'+url_args, action)
+    client = HTTPClient(host, '/'+url_args, action, port=port)
     asyncore.loop()
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ setuptools.setup(
     # point-which-calls>
     entry_points = {
     'console_scripts': ['lcd-cli=pypicolcd.command_line:main',
-                        'lcd-daemon=pypicolcd.lcddaemon:main'],
+                        'lcd-fb=pypicolcd.lcdframebuffer:main'],
     },
     install_requires = [
     'pyusb',

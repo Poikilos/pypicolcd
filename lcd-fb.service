@@ -1,0 +1,14 @@
+[Unit]
+description="Run lcd-fb as a specific user"
+After=network.target
+
+[Service]
+Type=simple
+Environment=statedir=/var/cache/lcd-fb
+ExecStartPre=/usr/bin/mkdir -p ${statedir}
+User=owner
+Group=owner
+ExecStart=lcd-fb
+
+[Install]
+WantedBy=multi-user.target

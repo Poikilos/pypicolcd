@@ -3,8 +3,8 @@
 This is an example standalone command-line interface program utilizing
 pypicolcd, which is a module for driverless writing to picoLCD. This
 example is included with pypicolcd. This example does not use the
-daemon, so normally you should base work on
-pypicolcd/pypicolcd/lcddaemon.py instead.
+framebuffer server, so normally you should base work on
+pypicolcd/pypicolcd/lcdframebuffer.py instead.
 
 Copyright (C) 2018  Jake Gustafson
 
