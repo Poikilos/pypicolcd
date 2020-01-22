@@ -35,15 +35,16 @@ try:
         from pypicolcd import find_resource
     except ImportError:
         raise ImportError("Missing find_resource")
-except ModuleNotFoundError as e:
+except ImportError as e:
+    # NOTE: ModuleNotFoundError is only available in Python 3.
     if "pypicolcd requires pyusb" in str(e):
         raise e
     else:
-        raise ModuleNotFoundError("pypicolcd is not present--try"
-                                  " installing it via pip in a"
-                                  " virtualenv to automatically get all"
-                                  " dependencies--see README.md in"
-                                  " pypicolcd")
+        raise ImportError("pypicolcd is not present--try"
+                          " installing it via pip in a"
+                          " virtualenv to automatically get all"
+                          " dependencies--see README.md in"
+                          " pypicolcd")
 
 try:
     import tkinter as tk

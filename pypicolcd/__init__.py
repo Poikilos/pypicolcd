@@ -29,9 +29,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 try:
     import usb
-except ModuleNotFoundError:
-    raise ModuleNotFoundError("pypicolcd requires pyusb (see"
-                              " \"Install\" in README.md)")
+except ImportError:
+    # NOTE: ModuleNotFoundError is only available in Python 3.
+    raise ImportError("pypicolcd requires pyusb (see"
+                      " \"Install\" in README.md)")
 
 about_msg = """
 pypicolcd  Copyright (C) 2018  Jake Gustafson

@@ -39,7 +39,8 @@ except ImportError:
 from datetime import datetime
 try:
     import systemd.daemon
-except ModuleNotFoundError:
+except ImportError:
+    # NOTE: ModuleNotFoundError is only available in Python 3.
     pass
 
 LCD_PORT = 25664
