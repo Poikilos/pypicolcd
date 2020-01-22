@@ -366,9 +366,16 @@ def main():
     # how-to-exit-a-python-daemon-cleanly>
     signal.signal(signal.SIGTERM, lcdd.handle_signal)
 
-    # See https://docs.python.org/2/library/asyncore.html
+    host = action.get("localhost")
+    if host is None:
+        host = 'localhost'
+    else:
+        del action["localhost"]
+        print("* running as host '{}'".format(host))
     lcdd.push_action(action)
-    server = LCDServer('localhost', LCD_PORT, lcdd)
+
+    # See https://docs.python.org/2/library/asyncore.html
+    server = LCDServer(host, LCD_PORT, lcdd)
     asyncore.loop()
 
     # Ignore code below, and use the asynccore subclass above instead.

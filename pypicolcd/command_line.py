@@ -76,7 +76,7 @@ class HTTPClient(asyncore.dispatcher):
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = host
         self.port = port
-        self.connect( (host, port) )
+        self.connect((host, port))
         buffer_s = 'GET {} HTTP/1.0\r\n\r\n'.format(path)
         self.buffer = buffer_s.encode()
         # self.buffer2 = json.dumps(action).encode()
@@ -182,12 +182,17 @@ def main():
     # else:
     #     print("* ERROR: The server provided an empty response.")
     # s.close()
-    action_json = json.dumps(action)
-    url_args = ""
-    url_args = "?json=" + quote(action_json, safe='')
+
     host = action.get("host")
     if host is None:
         host = "localhost"
+    if "host" in action:
+        del action["host"]
+
+    action_json = json.dumps(action)
+    url_args = ""
+    url_args = "?json=" + quote(action_json, safe='')
+    # print("* sending '{}'...".format(url_args))
     port = action.get("port")
 
     client = HTTPClient(host, '/'+url_args, action, port=port)
