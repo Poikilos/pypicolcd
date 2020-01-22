@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-Environment=statedir=/var/cache/lcd-fb
-ExecStartPre=/usr/bin/mkdir -p ${statedir}
+# Environment=statedir=/var/cache/lcd-fb
+# ExecStartPre=/usr/bin/mkdir -p ${statedir}
 User=owner
 Group=owner
 ExecStart=lcd-fb

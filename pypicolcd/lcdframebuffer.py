@@ -31,10 +31,10 @@ import json
 import asyncore
 import socket
 try:
-    from urllib.parse import urlparse
+    from urllib.parse import unquote
     from urllib.parse import quote
 except ImportError:
-    from urlparse import urlparse
+    from urlparse import unquote
     from urllib import quote
 from datetime import datetime
 
@@ -101,7 +101,7 @@ class LCDRequestHandler(asyncore.dispatcher_with_send):
                 if len(parts) >= 1:
                     name = parts[0]
                 if len(parts) >= 2:
-                    value = urlparse.unquote(parts[1])
+                    value = unquote(parts[1])
                 if len(parts) > 2:
                     print("  * ERROR: malformed URL param:"
                           " '{}'".format(chunk))
