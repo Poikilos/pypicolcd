@@ -99,7 +99,10 @@ class HTTPClient(asyncore.dispatcher):
     def handle_error(self):
         # See
         # https://github.com/python/cpython/blob/master/Lib/asyncore.py
-        nil, t, v, tbinfo = compact_traceback()
+        # nil, t, v, tbinfo = compact_traceback()
+        # See <https://github.com/python/cpython/blob/
+        # 5bbac8cbdf140ebce446ea4e7db2b20a5d7b8402/Lib/asyncore.py#L533>
+        t, v, tb = sys.exc_info()
 
         msg = (
             "lcd-fb at {}:{} responded with {}:{}.".format(
@@ -129,7 +132,7 @@ class HTTPClient(asyncore.dispatcher):
                 res = json.loads(res_s)
                 if self.results is not None:
                     for k, v in res.items():
-                        self.output[k] = v
+                        self.results[k] = v
                 else:
                     print("* the server says: {}".format(res))
                 # code = 0
