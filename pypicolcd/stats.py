@@ -233,17 +233,29 @@ def main():
     paths["root"] = "/"
     if platform.system() == "Windows":
         paths["root"] = "C:\\"
-    stats["root"] = "{} {}  ".format(
+    stats["root"] = "{} {}".format(
         freeSpaceAtFmt(paths["root"], unit=unit),
         unit
     )
-
+    pfsm = 1.5  # proportionally-spaced font space multiplier
     stat_list = []
+    name_max = 0
+    stat_max = 0
+    for name in stat_order:
+        if len(name) > name_max:
+            name_max = len(name)
+        if len(stats[name]) > stat_max:
+            stat_max = len(stats[name])
+
+    name_max = int(round(float(name_max) * pfsm))
+    fmt = "{:<" + str(name_max) + "} {:>" + str(stat_max) + "}"
     for name in stat_order:
         if name in stats.keys():
-            stat_list.append("{}: {}".format(name, stats[name]))
+            stat_list.append(
+                fmt.format(name + ":", stats[name])
+            )
         else:
-            stat_list.append("{}: missing".format(name))
+            stat_list.append(fmt.format(name, "missing"))
     args = [sys.argv[0]]
     params = {}
 
