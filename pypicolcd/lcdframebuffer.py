@@ -32,8 +32,10 @@ import asyncore
 import socket
 try:
     from urllib.parse import urlparse
+    from urllib.parse import quote
 except ImportError:
     from urlparse import urlparse
+    from urllib import quote
 from datetime import datetime
 
 LCD_PORT = 25664

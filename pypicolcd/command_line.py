@@ -38,8 +38,10 @@ import socket
 import json
 try:
     from urllib.parse import urlparse
+    from urllib.parse import quote
 except ImportError:
     from urlparse import urlparse
+    from urllib import quote
 # TODO: gradually add features from example-cli.py
 
 def customDie(msg, exit_code=1, logger=None):
@@ -182,7 +184,7 @@ def main():
     # s.close()
     action_json = json.dumps(action)
     url_args = ""
-    url_args = "?json=" + urlparse.quote(action_json, safe='')
+    url_args = "?json=" + quote(action_json, safe='')
     host = action.get("host")
     if host is none:
         host = "localhost"
