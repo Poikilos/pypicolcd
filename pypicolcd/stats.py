@@ -246,6 +246,10 @@ def main():
             name_max = len(name)
         if len(stats[name]) > stat_max:
             stat_max = len(stats[name])
+    if stat_max < 13:
+        stat_max = 13
+        # such as "1000000.00 mb"
+        # (which is1 tb)
 
     name_max = int(round(float(name_max) * pfsm))
     fmt = "{:<" + str(name_max) + "} {:>" + str(stat_max) + "}"
