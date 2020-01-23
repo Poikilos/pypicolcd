@@ -298,8 +298,8 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
                 # result = self.p.draw_text_at(self.time_pos, now_s,
                 #                              erase_behind_enable=True)
                 # TODO: use the rect from draw_text_at
-                self.draw_rect((self.time_pos, (256, 8)), False,
-                               filled=True)
+                self.p.draw_rect((self.time_pos, (256, 8)), False,
+                                 filled=True)
                 self.prev_enable_clock = False
 
     def push_action(self, action):
