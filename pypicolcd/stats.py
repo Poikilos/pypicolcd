@@ -218,7 +218,9 @@ def generate_action(action, lines, x=None, y=None):
 
 def main():
     # show_lines_for_headless(["Hello World!"])
-    stat_order = ["Memory", "Home", "root"]
+    slash_name = "primary /"
+    drive2_name = "Home"
+    stat_order = ["Memory", drive2_name, slash_name]
     stats = {}
 
     f = FreeMemLinux()
@@ -226,9 +228,9 @@ def main():
     # f_mb = FreeMemLinux(unit='MB')
     # f_percent = FreeMemLinux(unit='%')
     paths = {}
-    paths["Home"] = os.environ.get("HOME")
-    if paths["Home"] is None:
-        paths["Home"] = os.environ.get("USERPROFILE")
+    paths[drive2_name] = os.environ.get("HOME")
+    if paths[drive2_name] is None:
+        paths[drive2_name] = os.environ.get("USERPROFILE")
     # freemem = FreeMemLinux(unit='%')
     unit = 'mb'
     freemem = FreeMemLinux(unit=unit)
@@ -236,21 +238,35 @@ def main():
         freemem.total - freemem.used,
         unit
     )
-    # Assumes home is sdb1:
-    if paths["Home"] is not None:
-        stats["Home"] = "{} {}".format(
-            freeSpaceAtFmt(paths["Home"], unit=unit),
-            unit
-        )
-    else:
-        stats["Home"] = "?"
-    paths["root"] = "/"
+
     if platform.system() == "Windows":
-        paths["root"] = "C:\\"
-    stats["root"] = "{} {}".format(
-        freeSpaceAtFmt(paths["root"], unit=unit),
+        paths[slash_name] = "C:\\"
+        del paths[drive2_name]
+        stat_order.remove(drive2_name)
+        if os.path.isdir("D:\\"):
+            drive2_name = "D:"
+            paths[drive2_name] = "D:\\"
+            stat_order.append(drive2_name)
+        else:
+            drive2_name = None
+
+    if drive2_name is not None:
+        if paths[drive2_name] is not None:
+            stats[drive2_name] = "{} {}".format(
+                freeSpaceAtFmt(paths[drive2_name], unit=unit),
+                unit
+            )
+        else:
+            stats[drive2_name] = "?"
+    paths[slash_name] = "/"
+    stats[slash_name] = "{} {}".format(
+        freeSpaceAtFmt(paths[slash_name], unit=unit),
         unit
     )
+    if drive2_name is not None:
+        if stats[slash_name] == stats[drive2_name]:
+            del stats[drive2_name]
+            stat_order.remove(drive2_name)
     pfsm = 1.5  # proportionally-spaced font space multiplier
     stat_list = []
     name_max = 0
@@ -291,7 +307,10 @@ def main():
                 ender = sign_i
                 value = arg[sign_i+1:]
             name = arg[2:ender]
-            if name in get_commands():
+            if name == "headless":
+                # TODO: implement this local command on the server
+                params[name] = True
+            elif name in get_commands():
                 params[name] = True
             elif name in get_bool_options():
                 params[name] = to_bool(value)
@@ -361,7 +380,8 @@ def main():
             if action.get('headless') is True:
                 print("* attempting to write to tty1 (which could be a"
                       " picoLCD display on a headless server)...")
-                show_lines_for_headless(stat_list)
+                if "lines" in action:
+                    show_lines_for_headless(action["lines"])
         else:
             # print("  * in response to '{}'".format(action))
             info_s = results.get("info")
