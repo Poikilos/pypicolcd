@@ -5,6 +5,33 @@ The format is based on [Keep a
 Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [git] - 2020-01-23
+### Changed
+- Rename "brightness" option to "backlight" to make room for future
+  brightness option which could apply to the image brightness
+  (pre-dithering multiplier).
+- Move lcdclient to a separate module, and simplify stats.py by using
+  lcdclient instead of command_line.
+
+
+## [git] - 2020-01-23
+### Added
+- Allow custom text along with the lcd-stats command.
+
+### Changed
+- Improve input and output.
+- (install-lcd-fb.sh) Fix service file generation.
+- Fix Python 2 compatibility.
+- Fix lcd-stats argument processing.
+- Fix handle_error
+- Fix handle_signal (close the server when OS sends a signal).
+- Improve quality.sh and make PEP8 changes.
+- Fix use of clear, x, and y with the lcd-stats command.
+- Improve documentation including docstrings.
+- Make stats have a fixed width to ensure they overwrite previous
+  values.
+
+
 ## [git] - 2020-01-21
 ### Added
 - Create a server so that the buffer remains the same for multiple
@@ -30,6 +57,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 - Calculate the width of the space character (as `space_w`)
   automatically in push_text (formerly it used `3` literally).
 - rename lcd-daemon to lcd-fb
+
 
 ## [git] - 2020-01-20
 ### Added

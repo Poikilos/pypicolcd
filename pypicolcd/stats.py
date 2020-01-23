@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-from pypicolcd.command_line import run
+from pypicolcd import lcdclient
 
 import os
 import sys
 import platform
+import copy
 from datetime import datetime
 
 _MAX_LINES = 4
@@ -201,6 +202,14 @@ def freeSpaceAtFmt(path, unit="bytes", places=2):
     n = freeSpaceAt(path, unit=unit)
     return fmt.format(n)
 
+def generate_action(action, lines, x=None, y=None):
+    action = copy.deepcopy(action)
+    if x is not None:
+        action["x"] = x
+    if y is not None:
+        action["y"] = y
+    action["lines"] = lines
+    return action
 
 def main():
     # show_lines_for_headless(["Hello World!"])
@@ -267,7 +276,6 @@ def main():
     # --still pass them as terminal params.
     custom_lines = []
     custom_params = {}
-    redirect_custom_params = ["x", "y"]
     for i in range(1, len(sys.argv)):
         arg = sys.argv[i]
         if arg.startswith("--") and not arg.startswith("---"):
@@ -280,94 +288,67 @@ def main():
             name = arg[2:ender]
             params[name] = value
             print("* {}={}".format(name, value))
-            if name in redirect_custom_params:
-                custom_params[name] = value
-            else:
-                args.append(arg)
         else:
             custom_lines.append(arg)
-    stat_args = []
-    stat_args.extend(args)
-    custom_args = []
-    custom_args.extend(args)
-    for k, v in custom_params.items():
-        custom_args.append("--{}={}".format(k, v))
-    custom_args.extend(custom_lines)
+    x = params.get("x")
+    if x is None:
+        x = 0
+    y = params.get("y")
+    if y is None:
+        y = 0
+    top = 39
+    stat_d = generate_action(params, stat_list, x=0, y=top)
+    custom_d = generate_action(params, custom_lines, x=y, y=y)
 
-    # y = params.get("y")
-    # if y is None:
-        # y = 39
-    # else:
-        # y = int(y)
-    y = 39
-
-    # if "y" not in params:
-    stat_args.append("--x=0")
-    stat_args.append("--y={}".format(y))
-
-    # for k, v in params.items():
-    #     args.append("--{}={}".format(k, v))
-
-    stat_args.extend(stat_list)
     now = datetime.now()
     now_s = now.strftime("%Y-%m-%d %H:%M:%S")
     # args[len(args)-1] += "\t\t{}".format(now_s)
     batches = {}
-    batches["stats"] = stat_args
-    time_args = []
-    time_args.extend(args)
+    batches["stats"] = stat_d
     time_lines = []
     time_lines.append("on {}".format(os.uname()[1]))
     time_lines.append("@" + now_s)
-    time_args.extend(time_lines)
-    time_args.append("--x=153")
     # x=153 puts rightmost pixel of "@____-%m-%d %H:%M:%S" at the edge
     push_down = (len(stat_list)-len(time_lines))*8
-    time_args.append("--y={}".format(y+push_down))
-    # for k, v in params.items():
-    #     if k != "clear":
-    #         # print("* appending --{}={}".format(k, v))
-    #         time_args.append("--{}={}".format(k, v))
-    #     # else:
-    #         # print("* won't clear twice.")
-    batches["time"] = time_args
+    time_d = generate_action(params, time_lines, x=153, y=top+push_down)
+    batches["time"] = time_d
     order = ["time", "stats"]
     if len(custom_lines) > 0:
         # for k, v in params.items():
         #     if (k != "clear") and (k != "y"):
         #         print("* more lines: --{}={}".format(k, v))
         #         custom_lines.append("--{}={}".format(k, v))
-        batches["custom"] = custom_args
+        batches["custom"] = custom_d
         order.append("custom")
-        print("{} custom line(s)".format(len(custom_lines)))
+        # print("{} custom line(s)".format(len(custom_lines)))
     else:
         print("There are no custom lines.")
     first = True
     for key in order:
         print("")
-        these_args = batches[key]
+        action = batches[key]
         if not first:
             try:
-                these_args.remove("--clear")
-            except ValueError:
+                del action["clear"]
+            except KeyError:
                 pass
         first = False
-        results = run(these_args)
-        if results.get("info") != "OK":
+        results = lcdclient.send_action(action)
+        if results.get("status") != "OK":
             print('* {}'.format(results))
             print("  * in response to showing {}:"
-                  " '{}' (arg count: {})".format(key,
-                                                 "' '".join(these_args),
-                                                 len(these_args)))
-            if "--headless" in sys.argv:
-                print("* attempting to write to tty1 (which could be a picoLCD"
-                      " display on a headless server)...")
+                  " '{}'".format(key, action))
+            if action.get('headless') is True:
+                print("* attempting to write to tty1 (which could be a"
+                      " picoLCD display on a headless server)...")
                 show_lines_for_headless(stat_list)
         else:
+            info_s = results.get("info")
+            if info_s is not None:
+                print("\n".join(info_s.split("\\n")))
+                del results["info"]
             print('* {}'.format(results))
-            print("  * in response to"
-                  " '{}' (arg count {})".format("' '".join(these_args),
-                                                len(these_args)))
+            # print("  * in response to '{}'".format(action))
 
 
 if __name__ == "__main__":

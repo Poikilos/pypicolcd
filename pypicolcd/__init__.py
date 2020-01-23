@@ -74,6 +74,8 @@ LABEL="datalogger_rules_end"
 * Then reload rules:
   udevadm control --reload-rules
   udevadm trigger
+  # Then optionally:
+  udevadm test /etc/udev/rules.d/50-picoUSB-{device_hex}.rules
 
 * Then you must unplug the device!
 
@@ -82,6 +84,8 @@ LABEL="datalogger_rules_end"
   #- You must log out and log in after that.
 
 """
+
+# The variable below an example provided for maintainers.
 picoLCD_256x64_msg = dev_permission_msg.format(
     user="?",
     device_id="?",
@@ -254,7 +258,8 @@ class PicoLCD:
         self.change_enables = None
         self.verbose_enable = verbose_enable
         self.default_font = "ninepin"
-        self.default_font_size = font_meta[self.default_font]["default_size"]
+        df = self.default_font
+        self.default_font_size = font_meta[df]["default_size"]
         self._pos = (0, 0)
         self._f_cache = {}  # font cache
         self._s_cache = {}  # each character as stripes (pixel columns)
@@ -269,6 +274,9 @@ class PicoLCD:
         self._last_update_s = None
         self._fps_accumulated_time = 0.
         self._fps_accumulated_count = 0
+
+    def get_font_names(self):
+        return font_meta.keys()
 
     def connect(self):
         self.dc = None  # device characteristics
@@ -304,8 +312,8 @@ class PicoLCD:
                 #     self.framebuffer[1] = 255
                 #     if self.framebuffer[0] == 255:
                 #         # deal with list initialization paranoia
-                #         print("[ pycolcd ] ERROR: failed to create unique"
-                #               " framebuffer elements")
+                #         print("[ pycolcd ] ERROR: failed to create"
+                #               " unique framebuffer elements")
                 #         sys.exit(1)
                 #     else:
                 #         self.framebuffer[1] = 0
@@ -368,7 +376,8 @@ class PicoLCD:
                 self.error = ("ERROR: pypicolcd did not find a"
                               " known product ID connected to USB.")
         if self.error is not None:
-            print("* pypicolcd found {} known device(s)".format(found_count))
+            print("* pypicolcd found {} known"
+                  " device(s)".format(found_count))
             print(self.error)
         if self.ready():
             self.clear()
@@ -429,7 +438,8 @@ class PicoLCD:
         Draw an exclusive rectangle to the (framebuffer and) LCD.
 
         Keyword arguments:
-        rect -- tuple of tuples in format ((min_x, min_y), (max_x+1,max_y+1))
+        rect -- tuple of tuples in format ((min_x, min_y),
+            (max_x+1,max_y+1))
         on -- whether to turn the lcd pixel on (on is dark, since
             off lets backlight show through)
         """
@@ -463,7 +473,8 @@ class PicoLCD:
             bytes written
         """
         try:
-            return self.handle.interruptWrite(usb.ENDPOINT_OUT + 1, m, 1000)
+            return self.handle.interruptWrite(usb.ENDPOINT_OUT+1,
+                                              m, 1000)
         except usb.core.USBError:
             if enable_reconnect:
                 if self.reconnect():
@@ -652,6 +663,7 @@ class PicoLCD:
         if fss not in sc[font_path]:
             sc[font_path][fss] = {}
         is_escaped = False
+        _d = ImageDraw.Draw(self._im)
         for c in text:
             generate_enable = False
             this_sc = None
@@ -672,7 +684,7 @@ class PicoLCD:
                 # print("generate_enable: {}; len(this_sc):"
                 #       " {}".format(generate_enable, len(this_sc)))
             if generate_enable:
-                _d = ImageDraw.Draw(self._im)
+
                 try:
                     fnt = fc[font_path][fss]
                     if len(c.strip()) > 0:
@@ -732,7 +744,9 @@ class PicoLCD:
             if (c == "\\") and (not is_escaped):
                 is_escaped = True
                 continue
-
+            if _d is not None:
+                del _d
+                _d = None
             tab_w = 32
             if c == "\n":
                 is_escaped = True

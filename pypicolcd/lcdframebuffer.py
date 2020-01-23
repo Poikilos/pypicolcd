@@ -30,6 +30,8 @@ import logging
 import json
 import asyncore
 import socket
+import time
+from threading import Timer, Thread, Event
 try:
     from urllib.parse import unquote
     from urllib.parse import quote
@@ -44,6 +46,7 @@ except ImportError:
     pass
 
 LCD_PORT = 25664
+TIME_FMT = "%Y-%m-%d %H:%M"  # :%S
 
 
 def customDie(msg, exit_code=1, logger=None):
@@ -183,8 +186,21 @@ class LCDServer(asyncore.dispatcher):
             handler = LCDRequestHandler(sock, self.service)
 
 
+# See <https://stackoverflow.com/questions/12435211/
+# python-threading-timer-repeat-function-every-n-seconds>
+class ClockThread(Thread):
+    def __init__(self, stopEvent, lcd_framebuffer_server):
+        Thread.__init__(self)
+        self.stopEvent = stopEvent
+        self.lfbs = lcd_framebuffer_server
+
+    def run(self):
+        print("* ClockThread run...")
+        while not self.stopEvent.wait(0.5):
+            self.lfbs.update_clock()
+
+
 class LCDFramebufferServer(asyncore.dispatcher_with_send):
-    p = None
 
     def __init__(self, logger=None):
         self.p = PicoLCD()
@@ -192,6 +208,161 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
             logging.getLogger('lcd-fb')
         else:
             self.logger = logger
+        self.time_pos = [159, 0]
+        self.enable_clock = False
+        # x=159 leaves just enough room for "____-%m-%d %H:%M:%S"
+        self.config_help = {}
+        self.bool_options = ["verbose", "clock"]
+        self.allowed_names = ["background", "foreground", "backlight",
+                              "lines", "font", "x", "y"]
+        self.allowed_commands = ["clear", "flash", "push", "help"]
+        self.config_help["verbose"] = ("Write everything to the server"
+                                       " console.")
+        self.config_help["clock"] = ("Turn the clock on or off (pass x"
+                                     " and/or y along with the clock"
+                                     " option to change its position).")
+        self.config_help["background"] = ("Specify the path to an image"
+                                          " to draw before the text.")
+        self.config_help["foreground"] = ("Specify the path to an image"
+                                          " to draw after the text.")
+        self.config_help["backlight"] = ("Set the LCD backlight level"
+                                         " (0 to 255).")
+        self.config_help["lines"] = ("Provide a list of lines that"
+                                     " should display on the screen,"
+                                     " where the next line should wrap"
+                                     " to line under the first.")
+        self.config_help["font"] = ("Provide the name of a built-in"
+                                    " font (case-insensitive): ")
+        self.config_help["font"] += " ".join(self.p.get_font_names())
+        self.config_help["x"] = "Set the x location for this command."
+        self.config_help["y"] = "Set the y location for this command."
+        self.config_help["clear"] = "Clear the entire display."
+        self.config_help["flash"] = ("Flash the display off to get the"
+                                     " viewer's attention.")
+        self.config_help["push"] = ("Push text from left to right, then"
+                                    " scroll the display when more text"
+                                    " is written after reaching the"
+                                    " end.")
+        self.config_help["help"] = "Show a list of options."
+        self.stopFlag = Event()
+        self.clockThread = ClockThread(self.stopFlag, self)
+        self.clockThread.start()
+
+    def get_usage(self):
+        s = ""
+        s += "==================== Usage ===================="
+        s += ("\nParams should be followed by an equal sign"
+              " except for booleans and commands, which will be set to."
+              " true.")
+        s += "\nParams:"
+        for k, v in self.config_help.items():
+            s += "\n--" + k
+            s += "\n  " + v
+        s += "\n"
+        s += "\nExample:"
+        s += "\npython " + sys.argv[0] + ' image.dd --find "a phrase" > swapdredge_results.txt'
+        s += "\n#(The progress would still go to stderr so that you can see it while " + sys.argv[0] + " writes to stdout, which is results.txt in the example above)."
+        return s
+
+    def update_clock(self):
+        if self.enable_clock:
+            now = datetime.now()
+            now_s = now.strftime(TIME_FMT)
+            if self.p.ready():
+                result = self.p.draw_text_at(self.time_pos, now_s,
+                                             erase_behind_enable=True)
+                print("* drawing clock finished: {}".format(result))
+
+    def push_action(self, action):
+        """
+        Process an action dictionary, such as URL params or command line
+        params, in either case reduced to names and values.
+        """
+        prev_verbose = self.p.verbose_enable
+        res = {}
+        lines = action.get("lines")
+        for name, value in action.items():
+            if name == "lines":
+                pass
+            elif name in self.bool_options:
+                action[name] = to_bool(value)
+            elif name in self.allowed_names:
+                action[name] = value
+            elif name in self.allowed_commands:
+                action[name] = True
+            else:
+                self.p.verbose_enable = prev_verbose
+                raise ValueError("{} is an unknown option (value"
+                                 " '{}').".format(name, value))
+        verbose = action.get("verbose")
+        if verbose is not None:
+            self.p.verbose_enable = verbose
+        font = action.get("font")
+        if font is not None:
+            meta = get_font_meta(font)
+            if meta is None:
+                raise ValueError("The font is not known. Try (case"
+                                 " doesn't matter):"
+                                 " {}".format(font_meta.keys()))
+
+        if action.get("clear") is True:
+            self.p.clear()
+
+        backlight = action.get("backlight")
+        if backlight is not None:
+            b = int(backlight)
+            # print("* setting backlight to {}...".format(b))
+            self.p.set_backlight(b)
+
+        image_path = action.get("foreground")
+        x = action.get("x")
+        y = action.get("y")
+        clock = action.get("clock")
+        if clock is not None:
+            clock = to_bool(clock)
+            if x is not None:
+                self.time_pos[0] = x
+            if y is not None:
+                self.time_pos[y] = y
+        if image_path is not None:
+            self.show_image(image_path)
+        if action.get("push") is True:
+            if (x is not None) or (y is not None):
+                raise ValueError("x and y cannot be set along with the"
+                                 " push option, since push uses control"
+                                 " characters and scrolls"
+                                 " automatically")
+            if font is not None:
+                raise ValueError("Custom fonts do not work with push,"
+                                 " since it requires a fixed line"
+                                 " height (that is an even divisor of"
+                                 " the device height; only 8 is"
+                                 " implemented).")
+            try:
+                if lines is not None:
+                    all_text = " ".join(lines)
+                    print("* pushing {}...".format(all_text))
+                    self.p.push_text(all_text)
+                    # for line in lines:
+                    #     self.p.push_text(line)
+            except pypicolcd.DisconnectedError as e:
+                print("  * {}".format(e))
+        else:
+            self.show_lines(lines, font=font, x=x, y=y)
+
+        image_path = action.get("foreground")
+        if image_path is not None:
+            self.show_image(image_path)
+
+        if action.get("flash") is True:
+            self.p.flash()
+            self.p.flash()
+
+        res["status"] = "OK"
+        if action.get("help") is True:
+            res["info"] = self.get_usage()
+        self.p.verbose_enable = prev_verbose
+        return res
 
     def show_lines(self, lines, font=None, x=0, y=0):
         shown_count = 0
@@ -251,92 +422,11 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
             raise ValueError("{} does not exist.".format(image_path))
         self.p.draw_image((x, y), image_path, brightness=1)
 
-    def push_action(self, action):
-        """
-        Process an action dictionary, such as URL params or command line
-        params, in either case reduced to names and values.
-        """
-        prev_verbose = self.p.verbose_enable
-        res = {}
-        lines = action.get("lines")
-        allowed_names = ["background", "foreground", "brightness",
-                         "lines", "verbose", "font", "x", "y"]
-        allowed_commands = ["clear", "flash", "push"]
-        for name, value in action.items():
-            if name in allowed_names:
-                if name == "verbose":
-                    self.p.verbose_enable = to_bool(value)
-                else:
-                    action[name] = value
-            elif name in allowed_commands:
-                action[name] = True
-            else:
-                self.p.verbose_enable = prev_verbose
-                raise ValueError("{} is an unknown option (value"
-                                 " '{}').".format(name, value))
-
-        font = action.get("font")
-        if font is not None:
-            meta = get_font_meta(font)
-            if meta is None:
-                raise ValueError("The font is not known. Try (case"
-                                 " doesn't matter):"
-                                 " {}".format(font_meta.keys()))
-
-        if action.get("clear") is True:
-            self.p.clear()
-
-        brightness = action.get("brightness")
-        if brightness is not None:
-            b = int(brightness)
-            # print("* setting brightness to {}...".format(b))
-            self.p.set_backlight(b)
-
-        image_path = action.get("foreground")
-        x = action.get("x")
-        y = action.get("y")
-        if image_path is not None:
-            self.show_image(image_path)
-        if action.get("push") is True:
-            if (x is not None) or (y is not None):
-                raise ValueError("x and y cannot be set along with the"
-                                 " push option, since push uses control"
-                                 " characters and scrolls"
-                                 " automatically")
-            if font is not None:
-                raise ValueError("Custom fonts do not work with push,"
-                                 " since it requires a fixed line"
-                                 " height (that is an even divisor of"
-                                 " the device height; only 8 is"
-                                 " implemented).")
-            try:
-                if lines is not None:
-                    all_text = " ".join(lines)
-                    print("* pushing {}...".format(all_text))
-                    self.p.push_text(all_text)
-                    # for line in lines:
-                    #     self.p.push_text(line)
-            except pypicolcd.DisconnectedError as e:
-                print("  * {}".format(e))
-        else:
-            self.show_lines(lines, font=font, x=x, y=y)
-
-        image_path = action.get("foreground")
-        if image_path is not None:
-            self.show_image(image_path)
-
-        if action.get("flash") is True:
-            self.p.flash()
-            self.p.flash()
-
-        res["info"] = "OK"
-        self.p.verbose_enable = prev_verbose
-        return res
-
     def handle_signal(self, signum, frame):
         # Any signal should terminate it, since the handler is only
         # set for the signals you want (see signal.signal below, which
         # sets the handler).
+        msg = "lcd-fb will close due to signal {} ".format(signum)
         # msg = "lcd-fb got signal {}.".format(signum)
         # exit_signals = [signal.SIGINT, signal.SIGQUIT]
         self.p.draw_text(1, 1, msg)
@@ -344,11 +434,13 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         now_s = now.strftime("%Y-%m-%d %H:%M:%S")
         self.p.draw_text(2, 1, "@" + now_s)
         # if signum in exit_signals:
-        msg = "lcd-fb will close due to signal {} ".format(signum)
         # logging.info('* closing...')
         print("* " + msg)
-        self.stop()
-        # exit(0)
+        self.stopFlag.set()
+        self.close()
+        time.sleep(1)
+        print("* trying exit...")
+        exit(0)
 
 
 def main():
@@ -384,11 +476,11 @@ def main():
             lines.append(arg)
     if len(lines) > 0:
         action["lines"] = lines
-    lcdd = LCDFramebufferServer(logger=logger)
+    lfbs = LCDFramebufferServer(logger=logger)
 
     # See <https://raspberrypi.stackexchange.com/questions/77738/
     # how-to-exit-a-python-daemon-cleanly>
-    signal.signal(signal.SIGTERM, lcdd.handle_signal)
+    signal.signal(signal.SIGTERM, lfbs.handle_signal)
 
     host = action.get("localhost")
     if host is None:
@@ -396,12 +488,12 @@ def main():
     else:
         del action["localhost"]
         print("* running as host '{}'".format(host))
-    lcdd.push_action(action)
+    lfbs.push_action(action)
 
     # See https://docs.python.org/2/library/asyncore.html
-    server = LCDServer(host, LCD_PORT, lcdd)
+    server = LCDServer(host, LCD_PORT, lfbs)
     asyncore.loop()
-
+    lfbs.stopFlag.set()
     # Ignore code below, and use the asynccore subclass above instead.
     # See [Nischaya Sharma's Nov 29, 2018 answer edited Feb 16, 2019 by
     # Mohammad Mahjoub](https://stackoverflow.com/a/53536336)
@@ -426,9 +518,9 @@ def main():
     #     # print "S:",rcvdData
     #     # sendData = raw_input("N: ")
     #     req = json.loads(rcvdData)
-    #     lcdd.push_action(req)
+    #     lfbs.push_action(req)
     #     res = {}
-    #     res["info"] = "ok"
+    #     res["status"] = "ok"
     #     c.send(json.dumps(res).encode())
     #     # if (sendData == "Bye" or sendData == "bye"):
     #         # break
