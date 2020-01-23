@@ -12,6 +12,8 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
   (pre-dithering multiplier).
 - Move lcdclient to a separate module, and simplify stats.py by using
   lcdclient instead of command_line.
+- Finish the clock option (separate x and y params for clock from
+  others).
 
 
 ## [git] - 2020-01-23

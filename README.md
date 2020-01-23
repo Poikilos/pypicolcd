@@ -76,6 +76,13 @@ deactivate
   if the server prompts you with instructions on how to do that. Run
   example-cli.py or testing.pyw to view the instructions for linux.
 
+### Update The Server
+(The pip command below also updates the client.)
+- First, activate the virtualenv if present, then:
+  `pip install --upgrade https://github.com/poikilos/pypicolcd/archive/master.zip && rm -rf /home/owner/lcd/lib/python3.7/site-packages/pypicolcd/__pycache__/ && sudo systemctl daemon-reload && sudo systemctl restart lcd-fb`
+- Or, if you have a local copy of the git repo:
+  `pip install --upgrade ~/git/pypicolcd && rm -rf /home/owner/lcd/lib/python3.7/site-packages/pypicolcd/__pycache__/ && sudo systemctl daemon-reload && sudo systemctl restart lcd-fb`
+
 ## Usage
 * Draw Image:
   * pos is an x,y tuple

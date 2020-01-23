@@ -6,6 +6,9 @@ import sys
 import platform
 import copy
 from datetime import datetime
+from pypicolcd.lcdframebuffer import get_commands
+from pypicolcd.lcdframebuffer import get_bool_options
+from pypicolcd import to_bool
 
 _MAX_LINES = 4
 
@@ -202,14 +205,16 @@ def freeSpaceAtFmt(path, unit="bytes", places=2):
     n = freeSpaceAt(path, unit=unit)
     return fmt.format(n)
 
+
 def generate_action(action, lines, x=None, y=None):
     action = copy.deepcopy(action)
     if x is not None:
-        action["x"] = x
+        action["x"] = int(x)
     if y is not None:
-        action["y"] = y
+        action["y"] = int(y)
     action["lines"] = lines
     return action
+
 
 def main():
     # show_lines_for_headless(["Hello World!"])
@@ -286,38 +291,53 @@ def main():
                 ender = sign_i
                 value = arg[sign_i+1:]
             name = arg[2:ender]
-            params[name] = value
+            if name in get_commands():
+                params[name] = True
+            elif name in get_bool_options():
+                params[name] = to_bool(value)
+            else:
+                params[name] = value
             print("* {}={}".format(name, value))
         else:
             custom_lines.append(arg)
     x = params.get("x")
+    y = params.get("y")
+    clock_d = None
+    batches = {}
+    order = ["timestamp", "stats"]
+    if params.get("clock") is not None:
+        # Generate clock BEFORE x and y are set forcibly below.
+        clock_d = generate_action(params, None)
+        batches["clock"] = clock_d
+        del params["clock"]  # don't keep putting clock everywhere below
+        order.append("clock")
     if x is None:
         x = 0
-    y = params.get("y")
     if y is None:
         y = 0
     top = 39
     stat_d = generate_action(params, stat_list, x=0, y=top)
-    custom_d = generate_action(params, custom_lines, x=y, y=y)
 
     now = datetime.now()
     now_s = now.strftime("%Y-%m-%d %H:%M:%S")
     # args[len(args)-1] += "\t\t{}".format(now_s)
-    batches = {}
+
     batches["stats"] = stat_d
-    time_lines = []
-    time_lines.append("on {}".format(os.uname()[1]))
-    time_lines.append("@" + now_s)
+    timestamp_lines = []
+    timestamp_lines.append("on {}".format(os.uname()[1]))
+    timestamp_lines.append("@" + now_s)
     # x=153 puts rightmost pixel of "@____-%m-%d %H:%M:%S" at the edge
-    push_down = (len(stat_list)-len(time_lines))*8
-    time_d = generate_action(params, time_lines, x=153, y=top+push_down)
-    batches["time"] = time_d
-    order = ["time", "stats"]
+    push_down = (len(stat_list)-len(timestamp_lines))*8
+    timestamp_d = generate_action(params, timestamp_lines, x=153,
+                                  y=top+push_down)
+    batches["timestamp"] = timestamp_d
+
     if len(custom_lines) > 0:
         # for k, v in params.items():
         #     if (k != "clear") and (k != "y"):
         #         print("* more lines: --{}={}".format(k, v))
         #         custom_lines.append("--{}={}".format(k, v))
+        custom_d = generate_action(params, custom_lines, x=y, y=y)
         batches["custom"] = custom_d
         order.append("custom")
         # print("{} custom line(s)".format(len(custom_lines)))
@@ -343,12 +363,13 @@ def main():
                       " picoLCD display on a headless server)...")
                 show_lines_for_headless(stat_list)
         else:
+            # print("  * in response to '{}'".format(action))
             info_s = results.get("info")
             if info_s is not None:
-                print("\n".join(info_s.split("\\n")))
                 del results["info"]
             print('* {}'.format(results))
-            # print("  * in response to '{}'".format(action))
+            if info_s is not None:
+                print("\n".join(info_s.split("\\n")))
 
 
 if __name__ == "__main__":

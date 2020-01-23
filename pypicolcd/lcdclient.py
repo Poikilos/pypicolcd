@@ -8,7 +8,7 @@
 import pypicolcd
 # from pypicolcd.lcddaemon import LCDFramebufferServer
 from pypicolcd.lcdframebuffer import LCD_PORT
-#import timeit
+# import timeit
 # from timeit import default_timer as best_timer
 import sys
 import json
@@ -123,6 +123,7 @@ class LCDFramebufferClient(asyncore.dispatcher):
         sent = self.send(self.buffer)
         # print("* sent '{}'".format(self.buffer[:sent].decode()))
         self.buffer = self.buffer[sent:]
+
 
 def send_action(action):
     """

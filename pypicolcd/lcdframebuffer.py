@@ -47,6 +47,8 @@ except ImportError:
 
 LCD_PORT = 25664
 TIME_FMT = "%Y-%m-%d %H:%M"  # :%S
+bool_options = ["verbose", "clock"]
+allowed_commands = ["clear", "flash", "push", "help"]
 
 
 def customDie(msg, exit_code=1, logger=None):
@@ -196,26 +198,39 @@ class ClockThread(Thread):
 
     def run(self):
         print("* ClockThread run...")
-        while not self.stopEvent.wait(0.5):
-            self.lfbs.update_clock()
+        try:
+            while not self.stopEvent.wait(0.5):
+                self.lfbs.update_clock()
+        except Exception as e:
+            print("* ClockThread error: {}".format(e))
+        finally:
+            print("* ClockThread ended.")
+
+
+def get_bool_options():
+    return bool_options
+
+
+def get_commands():
+    return allowed_commands
 
 
 class LCDFramebufferServer(asyncore.dispatcher_with_send):
 
     def __init__(self, logger=None):
         self.p = PicoLCD()
+        self.prev_now_s = None
         if logger is None:
             logging.getLogger('lcd-fb')
         else:
             self.logger = logger
         self.time_pos = [159, 0]
         self.enable_clock = False
+        self.prev_enable_clock = self.enable_clock
         # x=159 leaves just enough room for "____-%m-%d %H:%M:%S"
         self.config_help = {}
-        self.bool_options = ["verbose", "clock"]
         self.allowed_names = ["background", "foreground", "backlight",
                               "lines", "font", "x", "y"]
-        self.allowed_commands = ["clear", "flash", "push", "help"]
         self.config_help["verbose"] = ("Write everything to the server"
                                        " console.")
         self.config_help["clock"] = ("Turn the clock on or off (pass x"
@@ -258,20 +273,34 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         for k, v in self.config_help.items():
             s += "\n--" + k
             s += "\n  " + v
-        s += "\n"
-        s += "\nExample:"
-        s += "\npython " + sys.argv[0] + ' image.dd --find "a phrase" > swapdredge_results.txt'
-        s += "\n#(The progress would still go to stderr so that you can see it while " + sys.argv[0] + " writes to stdout, which is results.txt in the example above)."
+        # s += "\n"
+        # s += "\nExample:"
         return s
 
     def update_clock(self):
         if self.enable_clock:
             now = datetime.now()
             now_s = now.strftime(TIME_FMT)
+            if now_s != self.prev_now_s:
+                if self.p.ready():
+                    self.prev_enable_clock = self.enable_clock
+                    result = self.p.draw_text_at(
+                        self.time_pos,
+                        now_s,
+                        erase_behind_enable=True
+                    )
+                    # print("* drawing clock finished:"
+                    #       " {}".format(result))
+                    # TODO: result should be rect (?), not None.
+                    self.prev_now_s = now_s
+        elif self.prev_enable_clock:
             if self.p.ready():
-                result = self.p.draw_text_at(self.time_pos, now_s,
-                                             erase_behind_enable=True)
-                print("* drawing clock finished: {}".format(result))
+                # result = self.p.draw_text_at(self.time_pos, now_s,
+                #                              erase_behind_enable=True)
+                # TODO: use the rect from draw_text_at
+                self.draw_rect((self.time_pos, (256, 8)), False,
+                               filled=True)
+                self.prev_enable_clock = False
 
     def push_action(self, action):
         """
@@ -284,11 +313,11 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         for name, value in action.items():
             if name == "lines":
                 pass
-            elif name in self.bool_options:
+            elif name in bool_options:
                 action[name] = to_bool(value)
             elif name in self.allowed_names:
                 action[name] = value
-            elif name in self.allowed_commands:
+            elif name in allowed_commands:
                 action[name] = True
             else:
                 self.p.verbose_enable = prev_verbose
@@ -320,10 +349,11 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         clock = action.get("clock")
         if clock is not None:
             clock = to_bool(clock)
+            self.enable_clock = clock
             if x is not None:
                 self.time_pos[0] = x
             if y is not None:
-                self.time_pos[y] = y
+                self.time_pos[1] = y
         if image_path is not None:
             self.show_image(image_path)
         if action.get("push") is True:
@@ -436,8 +466,13 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         # if signum in exit_signals:
         # logging.info('* closing...')
         print("* " + msg)
+        print("* setting stop flag in "
+              "lcdframebuffer:LCDFramebufferServer:handle_signal...")
         self.stopFlag.set()
         self.close()
+        time.sleep(1)
+        print("* trying to end (join) thread manually...")
+        self.clockThread.join()
         time.sleep(1)
         print("* trying exit...")
         exit(0)
@@ -492,8 +527,14 @@ def main():
 
     # See https://docs.python.org/2/library/asyncore.html
     server = LCDServer(host, LCD_PORT, lfbs)
-    asyncore.loop()
-    lfbs.stopFlag.set()
+    try:
+        asyncore.loop()
+    except Exception as e:
+        print("* asyncore.loop failed in lcdframebuffer:main:"
+              " {}".format(e))
+    finally:
+        print("* setting stop flag in lcdframebuffer:main...")
+        lfbs.stopFlag.set()
     # Ignore code below, and use the asynccore subclass above instead.
     # See [Nischaya Sharma's Nov 29, 2018 answer edited Feb 16, 2019 by
     # Mohammad Mahjoub](https://stackoverflow.com/a/53536336)

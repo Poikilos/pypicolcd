@@ -324,7 +324,7 @@ class PicoLCD:
                 # self.framebuffer = [0] * (self.dc["block_size"])
                 # self.framebuffers.append(self.framebuffer)
                 pass
-            self.reset_framebuffer()
+            self.reset_framebuffer(enable_reconnect=False)
 
         if this_device is not None:
             self.handle = this_device.open()
@@ -383,7 +383,7 @@ class PicoLCD:
             self.clear()
             self.set_backlight(self._backlight_level,
                                enable_reconnect=False)
-        return self.dc is not None
+        return self.ready()
 
     def blab(self, msg, where=None):
         if self.verbose_enable:
@@ -473,8 +473,11 @@ class PicoLCD:
             bytes written
         """
         try:
-            return self.handle.interruptWrite(usb.ENDPOINT_OUT+1,
-                                              m, 1000)
+            return self.handle.interruptWrite(
+                usb.ENDPOINT_OUT+1,
+                m,
+                1000
+            )
         except usb.core.USBError:
             if enable_reconnect:
                 if self.reconnect():
@@ -506,7 +509,7 @@ class PicoLCD:
         self.blab("* " + calframe[1][3] + " is reconnecting...")
         result = self.connect()
         if result:
-            self.reset_framebuffer()
+            self.reset_framebuffer(enable_reconnect=False)
             self.invalidate()
             self.refresh(enable_reconnect=False)
         return result
@@ -540,12 +543,18 @@ class PicoLCD:
             self.framebuffers[fb_i] = [0] * (self.dc["block_size"])
             self.change_enables[fb_i] = -1
 
-    def reset_framebuffer(self):
+    def reset_framebuffer(self, enable_reconnect=True):
         self.change_enables = []
         self.framebuffers = []
         # for block_i in range(self.dc["blockrows"]):
         #     for zone_i in range(self.dc["zones"]):
         #         self.change_enables.append(False)
+        if not self.ready():
+            if enable_reconnect:
+                self.reconnect()
+        if not self.ready():
+            raise DisconnectedError("reconnect failed"
+                                    " in reset_framebuffer")
         block_count = self.dc["blockrows"] * self.dc["zones"]
         for fb_i in range(block_count):
             self.change_enables.append(0)
@@ -688,6 +697,7 @@ class PicoLCD:
                 try:
                     fnt = fc[font_path][fss]
                     if len(c.strip()) > 0:
+                        self.blab("* drawing '{}'...".format(c))
                         _d.text((0, 0), c, font=fnt,
                                 fill=(255, 255, 255, 255))
                         start_enable = False
@@ -715,10 +725,12 @@ class PicoLCD:
                                     # found end of letter
                                     break
                             x += 1
+                        self.blab("* erasing rect")
                         _d.rectangle((0, 0, x+1, 8),
                                      fill=(255, 255, 255, 0))
                         # self._im.putalpha(0)
                     else:
+                        self.blab("* handling space")
                         # " " (space)
                         space_w = int(font_size*.4)
                         # less than width of ~6px wide letters
@@ -734,11 +746,13 @@ class PicoLCD:
                     raise e
                 finally:
                     if _d is not None:
+                        self.blab("* deleting _d")
                         del _d
                         _d = None
                 # print("* '{}' became {} wide...".format(c,
                 #                                         len(this_sc)))
             else:
+                self.blab("* loading existing stripe cache")
                 this_sc = sc[font_path][fss][c]
 
             if (c == "\\") and (not is_escaped):
@@ -773,7 +787,7 @@ class PicoLCD:
                     abs_x = tab_slot_i * tab_w
                     continue
                 # otherwise count it as a literal
-
+            self.blab("* writing stripes")
             if abs_x + len(this_sc) > dst_w:
                 abs_x = 0
                 abs_y += 8
@@ -926,8 +940,15 @@ class PicoLCD:
             # self.blab("* getting draw buffer from _im")
             _d = ImageDraw.Draw(self._im)
             try:
-                self.blab("* drawing text at {} using PIL Draw"
-                          " object".format(pos))
+                self.blab("* drawing '{}' at {} using fnt {} on PIL"
+                          " Draw object".format(text, pos, fnt))
+                # TODO: _d.text sometimes causes
+                # `Segmentation fault (core dumped)`
+                # or
+                # ```
+                # corrupted size vs. prev_size
+                # Aborted (core dumped)
+                # ```:
                 _d.text(pos, text, font=fnt, fill=(255, 255, 255, 255))
                 pos_list = []
                 self.blab("* drawing text from buffer")
@@ -989,6 +1010,7 @@ class PicoLCD:
                 raise e
             finally:
                 if _d is not None:
+                    self.blab("* deleting _d finally")
                     del _d
                     _d = None
             # for y in range(self.dc["height"]):
@@ -1097,6 +1119,7 @@ class PicoLCD:
     #   refresh entire zone; if 0, do not refresh anything so calling
     #   this method was a waste of time)
     def invalidate(self, zones=None, blocks=None, zone_stop_x=-1):
+        self.blab("* invalidate")
         if zones is None:
             zones = []
             for i in range(self.dc["zones"]):
@@ -1143,6 +1166,7 @@ class PicoLCD:
         call invalidate first to inform PicoLCD which framebuffers
         changed.
         """
+        self.blab("* refresh")
         for fb_i in range(len(self.change_enables)):
             if self.change_enables[fb_i] != 0:
                 block_i = int(fb_i / self.dc["blockrows"])
@@ -1389,10 +1413,10 @@ class PicoLCD:
             # print(msg + " " + str((zone_i, block_i)))
             self.refresh_block(zone_i, block_i, zone_stop_x=byte_i+1)
 
-    def clear(self):
-        self.reset_framebuffer()
+    def clear(self, enable_reconnect=True):
+        self.reset_framebuffer(enable_reconnect=enable_reconnect)
         self.invalidate()
-        self.refresh()
+        self.refresh(enable_reconnect=enable_reconnect)
         self.preview_flag = True
 
     def set_backlight_f(self, level, enable_reconnect=True):
@@ -1432,6 +1456,7 @@ class PicoLCD:
             raise ValueError("The level must be 0-255")
 
     def leds(self, state):
+        # TODO: test this, and do something with the return
         self.wr([OUT_REPORT_LED_STATE, state])
 
     def flash(self):

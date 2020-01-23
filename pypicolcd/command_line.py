@@ -20,7 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from pypicolcd import lcdclient
 
+import sys
 import logging
+
 
 def customDie(msg, exit_code=1, logger=None):
     print("")
@@ -90,7 +92,7 @@ def run(args):
     #     print("* ERROR: The server provided an empty response.")
     # s.close()
 
-    return send_action(action)
+    return lcdclient.send_action(action)
 
 
 def main():
