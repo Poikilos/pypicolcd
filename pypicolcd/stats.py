@@ -334,7 +334,7 @@ def main():
         x = 0
     if y is None:
         y = 0
-    top = 39
+    top = 63 - (len(stat_order) * 8)
     stat_d = generate_action(params, stat_list, x=0, y=top)
 
     now = datetime.now()
