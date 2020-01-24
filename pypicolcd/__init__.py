@@ -1414,6 +1414,7 @@ class PicoLCD:
             self.refresh_block(zone_i, block_i, zone_stop_x=byte_i+1)
 
     def clear(self, enable_reconnect=True):
+        self.prev_now_s = None  # invalidate the clock
         self.reset_framebuffer(enable_reconnect=enable_reconnect)
         self.invalidate()
         self.refresh(enable_reconnect=enable_reconnect)
