@@ -253,6 +253,7 @@ def get_font_meta(name):
 class PicoLCD:
 
     def __init__(self, verbose_enable=False):
+        self.enable_permission_msg = True  # Only show this once.
         self._backlight_level = 0xFF
         self.framebuffer = None
         self.framebuffers = None
@@ -358,13 +359,14 @@ class PicoLCD:
                 if un == "root":
                     self.error += ("\n  You are root, so this shouldn't"
                                    " happen.")
-                else:
+                elif self.enable_permission_msg:
                     self.error = dev_permission_msg.format(
                         user=un,
                         device_id=idp_i_s,
                         device_hex=idp_s,
                         vendor_hex=idv_s
                     )
+                    self.enable_permission_msg = False
                 self.error += ("\n\n")
                 self.error += ("* Connecting to a root hub or USB 2 or"
                                "\n  earlier port may solve the issue if"
@@ -373,7 +375,7 @@ class PicoLCD:
 
                 # print("[ PicoLCD ] ERROR--" + self.error + ": ")
                 # NOTE: self.error is shown further down.
-                view_traceback()
+                # view_traceback()
         else:
             if self.error is None:
                 self.error = ("ERROR: pypicolcd did not find a"
