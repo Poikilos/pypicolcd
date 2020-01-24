@@ -323,6 +323,8 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
                 self.p.verbose_enable = prev_verbose
                 raise ValueError("{} is an unknown option (value"
                                  " '{}').".format(name, value))
+        if action.get("clear") is True:
+            self.p.clear()
         verbose = action.get("verbose")
         if verbose is not None:
             self.p.verbose_enable = verbose
@@ -334,8 +336,6 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
                                  " doesn't matter):"
                                  " {}".format(font_meta.keys()))
 
-        if action.get("clear") is True:
-            self.p.clear()
 
         backlight = action.get("backlight")
         if backlight is not None:
