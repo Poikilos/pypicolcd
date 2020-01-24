@@ -78,10 +78,10 @@ deactivate
 
 ### Update The Server
 (The pip command below also updates the client.)
-- First, activate the virtualenv if present such as by running `~/lcd/bin/activate`, then:
+- First, activate the virtualenv if present such as by running `source ~/lcd/bin/activate`, then:
   `pip install --upgrade https://github.com/poikilos/pypicolcd/archive/master.zip && rm -rf ~/lcd/lib/python3.7/site-packages/pypicolcd/__pycache__/ && sudo systemctl daemon-reload && sudo systemctl restart lcd-fb`
 - Or, if you have a local copy of the git repo:
-  - You still must activate the venv, such as by running `~/lcd/bin/activate`, then do
+  - You still must activate the venv, such as by running `source ~/lcd/bin/activate`, then do
   `pip install --upgrade ~/git/pypicolcd && rm -rf ~/lcd/lib/python3.7/site-packages/pypicolcd/__pycache__/ && sudo systemctl daemon-reload && sudo systemctl restart lcd-fb`
 
 ## Usage
