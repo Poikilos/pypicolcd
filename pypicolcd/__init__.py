@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import time
+from datetime import datetime
 import sys
 import traceback
 import os
@@ -265,6 +266,7 @@ class PicoLCD:
         self._s_cache = {}  # each character as stripes (pixel columns)
         self._im = None  # font rendering buffer
         # self.default_font_path = "fonts/ninepin.ttf"
+        self.invalidate_dt = datetime.now()
         self.connect()
         self.preview_flag = False
         self._fps_interval = .4
@@ -278,7 +280,7 @@ class PicoLCD:
     def get_font_names(self):
         return font_meta.keys()
 
-    def connect(self):
+    def connect(self, silent=False, enable_reset=True):
         self.dc = None  # device characteristics
         self.handle = None
         buses = usb.busses()
@@ -324,7 +326,8 @@ class PicoLCD:
                 # self.framebuffer = [0] * (self.dc["block_size"])
                 # self.framebuffers.append(self.framebuffer)
                 pass
-            self.reset_framebuffer(enable_reconnect=False)
+            if enable_reset:
+                self.reset_framebuffer(enable_reconnect=False)
 
         if this_device is not None:
             self.handle = this_device.open()
@@ -376,11 +379,13 @@ class PicoLCD:
                 self.error = ("ERROR: pypicolcd did not find a"
                               " known product ID connected to USB.")
         if self.error is not None:
-            print("* pypicolcd found {} known"
-                  " device(s)".format(found_count))
-            print(self.error)
+            if not silent:
+                print("* pypicolcd found {} known"
+                      " device(s)".format(found_count))
+                print(self.error)
         if self.ready():
-            self.clear()
+            if enable_reset:
+                self.clear()
             self.set_backlight(self._backlight_level,
                                enable_reconnect=False)
         return self.ready()
@@ -503,13 +508,13 @@ class PicoLCD:
                                             " failed.")
         return 0
 
-    def reconnect(self):
+    def reconnect(self, silent=False):
         curframe = inspect.currentframe()
         calframe = inspect.getouterframes(curframe, 2)
         self.blab("* " + calframe[1][3] + " is reconnecting...")
-        result = self.connect()
+        result = self.connect(silent=silent, enable_reset=False)
         if result:
-            self.reset_framebuffer(enable_reconnect=False)
+            # self.reset_framebuffer(enable_reconnect=False)
             self.invalidate()
             self.refresh(enable_reconnect=False)
         return result
@@ -1119,6 +1124,7 @@ class PicoLCD:
     #   refresh entire zone; if 0, do not refresh anything so calling
     #   this method was a waste of time)
     def invalidate(self, zones=None, blocks=None, zone_stop_x=-1):
+        self.invalidate_dt = datetime.now()
         self.blab("* invalidate")
         if zones is None:
             zones = []
@@ -1303,7 +1309,7 @@ class PicoLCD:
             refresh_enable = True
         if not self.ready():
             print("* set_pixel attempting to connect...")
-            if not self.connect():
+            if not self.reconnect():
                 raise DisconnectedError("The device is not connected.")
         dst_w = self.dc["width"]
         dst_h = self.dc["height"]
@@ -1370,7 +1376,7 @@ class PicoLCD:
         # NOTE: one byte covers 8 pixels on y axis from landscape view
         if not self.ready():
             print("* set_byte is attempting to reconnect...")
-            if not self.connect():
+            if not self.reconnect():
                 raise DisconnectedError("The device is not connected.")
         x, y = pos
         if force_refresh_enable:
@@ -1414,7 +1420,6 @@ class PicoLCD:
             self.refresh_block(zone_i, block_i, zone_stop_x=byte_i+1)
 
     def clear(self, enable_reconnect=True):
-        self.prev_now_s = None  # invalidate the clock
         self.reset_framebuffer(enable_reconnect=enable_reconnect)
         self.invalidate()
         self.refresh(enable_reconnect=enable_reconnect)

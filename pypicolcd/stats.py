@@ -371,6 +371,10 @@ def main():
                 del action["clear"]
             except KeyError:
                 pass
+            try:
+                del action["refresh"]
+            except KeyError:
+                pass
         first = False
         results = lcdclient.send_action(action)
         if results.get("status") != "OK":

@@ -48,7 +48,7 @@ except ImportError:
 LCD_PORT = 25664
 TIME_FMT = "%Y-%m-%d %H:%M"  # :%S
 bool_options = ["verbose", "clock"]
-allowed_commands = ["clear", "flash", "push", "help"]
+allowed_commands = ["clear", "flash", "push", "help", "refresh"]
 
 
 def customDie(msg, exit_code=1, logger=None):
@@ -197,14 +197,67 @@ class ClockThread(Thread):
         self.lfbs = lcd_framebuffer_server
 
     def run(self):
-        print("* ClockThread run...")
+        print("* The ClockThread started.")
         try:
             while not self.stopEvent.wait(0.5):
                 self.lfbs.update_clock()
+                if self.lfbs.keepAliveThread is None:
+                    if not self.lfbs.dieFlag.is_set():
+                        print("* The ClockThread"
+                              " is restarting KeepAlive.")
+                        self.lfbs._run_keep_alive()
         except Exception as e:
             print("* ClockThread error: {}".format(e))
         finally:
             print("* ClockThread ended.")
+            self.lfbs.clockThread = None
+
+
+class KeepAliveThread(Thread):
+    def __init__(self, stopEvent, lcd_framebuffer_server):
+        Thread.__init__(self)
+        self.stopEvent = stopEvent
+        self.lfbs = lcd_framebuffer_server
+        self.prev_ready = self.lfbs.p.ready()
+        self.prev_msg = None
+
+    def run(self):
+        print("* The KeepAliveThread started.")
+        try:
+            while not self.stopEvent.wait(2.0):
+                if self.lfbs.clockThread is None:
+                    if not self.lfbs.stopFlag.is_set():
+                        self.prev_ready = False  # why: error ends clock
+                        print("* KeepAlive is restarting"
+                              " the draw timer...")
+                        self.lfbs._run_clock()
+                if not self.prev_ready:
+                    try:
+                        msg = None
+                        if not self.lfbs.p.ready():
+                            msg = ("* KeepAlive is reconnecting"
+                                   " the LCD...")
+                            if msg != self.prev_msg:
+                                print(msg)
+                                self.prev_msg = msg
+                            else:
+                                msg = None
+                            self.lfbs.p.reconnect(silent=True)
+                        if self.lfbs.p.ready():
+                            if msg is None:
+                                print(self.prev_msg)  # say reconnecting
+                            self.prev_msg = None
+                            print("  * OK. Refreshing...")
+                            self.lfbs.p.refresh(enable_reconnect=False)
+                            self.prev_ready = True
+                    except pypicolcd.DisconnectedError:
+                        print("  * FAILED")
+                        pass
+        except Exception as e:
+            print("* KeepAlive error: {}".format(e))
+        finally:
+            print("* KeepAlive ended.")
+            self.lfbs.keepAliveThread = None
 
 
 def get_bool_options():
@@ -218,13 +271,18 @@ def get_commands():
 class LCDFramebufferServer(asyncore.dispatcher_with_send):
 
     def __init__(self, logger=None):
+        self.clockThread = None
+        self.keepAliveThread = None
+        self.stopFlag = Event()
+        self.dieFlag = Event()
         self.p = PicoLCD()
-        self.prev_now_s = None
         if logger is None:
             logging.getLogger('lcd-fb')
         else:
             self.logger = logger
         self.time_pos = [159, 0]
+        self.prev_clock_dt = datetime.now()
+        self.prev_clock_s = None
         self.enable_clock = False
         self.prev_enable_clock = self.enable_clock
         # x=159 leaves just enough room for "____-%m-%d %H:%M:%S"
@@ -259,9 +317,25 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
                                     " is written after reaching the"
                                     " end.")
         self.config_help["help"] = "Show a list of options."
-        self.stopFlag = Event()
+        self.config_help["refresh"] = ("Draw the buffer (such as in"
+                                       " case the device disconnected"
+                                       " without the framebuffer"
+                                       " knowing nor invalidating based"
+                                       " on that knowledge).")
+        self._run_clock()
+        self._run_keep_alive()
+
+    def _run_clock(self):
+        if self.clockThread is not None:
+            raise RuntimeError("There is already one clock thread.")
         self.clockThread = ClockThread(self.stopFlag, self)
         self.clockThread.start()
+
+    def _run_keep_alive(self):
+        if self.keepAliveThread is not None:
+            raise RuntimeError("There is already one KeepAlive thread.")
+        self.keepAliveThread = KeepAliveThread(self.dieFlag, self)
+        self.keepAliveThread.start()
 
     def get_usage(self):
         s = ""
@@ -279,9 +353,12 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
 
     def update_clock(self):
         if self.enable_clock:
+            if self.clockThread is None:
+                self._run_clock()
             now = datetime.now()
             now_s = now.strftime(TIME_FMT)
-            if now_s != self.prev_now_s:
+            reconnected = (self.prev_clock_dt < self.p.invalidate_dt)
+            if (now_s != self.prev_clock_s) or reconnected:
                 if self.p.ready():
                     self.prev_enable_clock = self.enable_clock
                     result = self.p.draw_text_at(
@@ -292,7 +369,8 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
                     # print("* drawing clock finished:"
                     #       " {}".format(result))
                     # TODO: result should be rect (?), not None.
-                    self.prev_now_s = now_s
+                    self.prev_clock_dt = now
+                    self.prev_clock_s = now_s
         elif self.prev_enable_clock:
             if self.p.ready():
                 # result = self.p.draw_text_at(self.time_pos, now_s,
@@ -325,6 +403,9 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
                                  " '{}').".format(name, value))
         if action.get("clear") is True:
             self.p.clear()
+        if action.get("refresh") is True:
+            self.p.invalidate()
+            self.p.refresh()
         verbose = action.get("verbose")
         if verbose is not None:
             self.p.verbose_enable = verbose
@@ -466,13 +547,16 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         # if signum in exit_signals:
         # logging.info('* closing...')
         print("* " + msg)
-        print("* setting stop flag in "
+        print("* setting thread stop flags in "
               "lcdframebuffer:LCDFramebufferServer:handle_signal...")
         self.stopFlag.set()
+        self.dieFlag.set()
         self.close()
         time.sleep(1)
-        print("* trying to end (join) thread manually...")
+        print("* trying to end (join) clock thread manually...")
         self.clockThread.join()
+        print("* trying to end (join) keepalive thread manually...")
+        self.keepAliveThread.join()
         time.sleep(1)
         print("* trying exit...")
         exit(0)

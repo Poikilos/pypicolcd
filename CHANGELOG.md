@@ -6,6 +6,18 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [git] - 2020-01-23
+### Added
+- KeepAlive thread for recovering clock and reconnecting in that case.
+- Add `refresh` command (calls `invalidate()` and `refresh()`).
+
+### Changed
+- Avoid resetting the framebuffer on reconnect.
+- Recover clock thread on reconnect.
+- Use clock thread to discover that a disconnect occurred (to force
+  refresh from buffer in that case).
+
+
+## [git] - 2020-01-23
 ### Changed
 - Rename "brightness" option to "backlight" to make room for future
   brightness option which could apply to the image brightness

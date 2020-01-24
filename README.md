@@ -95,7 +95,13 @@ deactivate
 * Pixel manipulation:
   * For drawing many pixels at once, make your drawing faster by using `refresh_enable=False` (such as `picolcd.set_pixel(x, y, True, refresh_enable=False)`), then call `picolcd.refresh()` after all of your `set_pixel` calls are done (draw_text is an example of how to use this optimization)
   * get_pixel only works for pixels created during the life of the PicoLCD object, since it gets pixels from the offscreen pixelbuffers
-
+* On Reconnect:
+  * If you disconnect the device for 1 minute or when the minute
+    changes, and the clock is on, or some other write occurs when the
+    device is disconnected, the framebuffer server will know, and
+    invalidate the display (so that it will redraw when possible).
+    - Otherwise, you should send the `refresh` command (such as
+      `lcd-cli --refresh`) to redraw the offscreen buffer.
 
 ## Known Issues
 - [ ] If possible, read the state of buttons on the unit (also via pyusb).
