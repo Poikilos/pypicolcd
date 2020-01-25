@@ -26,7 +26,7 @@ where `\`hostname -i\`` is your IP address.
 - This module does not require a (non-Python kernel) driver unlike pyusblcd in the PyPI repository.
 - This module has a persistent framebuffer server unlike other driverless modules named similarly such as [JamesTheAwesomeDude/pyPicoLCD](https://github.com/JamesTheAwesomeDude/pyPicoLCD) and [itszero/picoLCD256x64](https://github.com/itszero/picoLCD256x64).
 - This module uses pyusb for driverless access and implements a lcd-cli command similarly to how [rebeccaskinner/lcddeamon](https://github.com/rebeccaskinner/lcddeamon) uses libusb for driverless access and implements a usblcd command, but that daemon is written in c.
-- lcd4linux is a tool that writes data using shell expressions in lcd4linux.conf, but has some features such as bold text and progress bars (which are usually used as meters).
+- lcd4linux is a tool that only writes data using shell expressions in lcd4linux.conf, yet has some features such as bold text and progress bars (which are usually used as meters).
 
 ## Install
 - Uninstall lcd4linux if present: pypicolcd is not designed to work while lcd4linux is installed.
