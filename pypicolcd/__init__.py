@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 pypicolcd, a module for driverless writing to picoLCD
 Copyright (C) 2018  Jake Gustafson

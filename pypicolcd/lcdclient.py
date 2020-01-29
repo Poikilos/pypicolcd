@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # from pypicolcd import PicoLCD
 # from pypicolcd import to_bool
 # from pypicolcd import find_resource

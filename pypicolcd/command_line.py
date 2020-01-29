@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 This is a CLI for pypicolcd, which is a module for driverless writing to
 picoLCD

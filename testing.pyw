@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 This is a testing program for discovering commands for picoLCD devices.
 It is included as part of pypicolcd, a module for driverless writing to

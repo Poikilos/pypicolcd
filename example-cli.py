@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 This is an example standalone command-line interface program utilizing
 pypicolcd, which is a module for driverless writing to picoLCD. This
