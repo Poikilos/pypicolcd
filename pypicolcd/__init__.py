@@ -261,6 +261,7 @@ class PicoLCD:
         self.verbose_enable = verbose_enable
         self.default_font = "ninepin"
         df = self.default_font
+        self.enable_no_device_error = True
         self.default_font_size = font_meta[df]["default_size"]
         self._pos = (0, 0)
         self._f_cache = {}  # font cache
@@ -381,11 +382,15 @@ class PicoLCD:
                 self.error = ("ERROR: pypicolcd did not find a"
                               " known product ID connected to USB.")
         if self.error is not None:
-            if not silent:
-                print("* pypicolcd found {} known"
-                      " device(s)".format(found_count))
+            if (not silent) and self.enable_no_device_error:
+                self.blab(
+                    print("* pypicolcd found {} known"
+                          " device(s)".format(found_count))
+                )
                 print(self.error)
+                self.enable_no_device_error = False
         if self.ready():
+            self.enable_no_device_error = True
             if enable_reset:
                 self.clear()
             self.set_backlight(self._backlight_level,
@@ -1183,6 +1188,11 @@ class PicoLCD:
         call invalidate first to inform PicoLCD which framebuffers
         changed.
         """
+        if not self.ready():
+            if enable_reconnect:
+                self.reconnect()
+        if not self.ready():
+            return False
         self.blab("* refresh")
         for fb_i in range(len(self.change_enables)):
             if self.change_enables[fb_i] != 0:
