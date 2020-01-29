@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-from pypicolcd import lcdclient
 
 import os
 import sys
 import platform
 import copy
 from datetime import datetime
+
+from pypicolcd import lcdclient
 from pypicolcd.lcdframebuffer import get_commands
 from pypicolcd.lcdframebuffer import get_bool_options
 from pypicolcd import to_bool
@@ -133,19 +134,22 @@ def show_lines_for_headless(lines):
     os.close(tty)
 
 
-def show_lines(lines):
+def run_cli(args):
     # TODO: This is not tested. Use run from from pypicolcd.command_line
     # directly instead.
     results = {"error": "contacting the server did not complete"}
     # See <https://www.saltycrane.com/blog/2008/09/
     # how-get-stdout-and-stderr-using-python-subprocess-module/>
-    args = ['lcd-cli']
-    args.extend(lines)
+    if len(args) >= 1:
+        if not args[0].endswith('lcd-cli'):
+            args = ['lcd-cli'] + args
+    if len(args) < 2:
+        raise ValueError("You didn't provide any arguments.")
     wgproc = subprocess.Popen(args, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
     (standardout, junk) = wgproc.communicate()
-    results = json.loads(standardout)
-    return results
+    result = standardout
+    return result
 
 
 k_div = 1024
@@ -216,7 +220,23 @@ def generate_action(action, lines, x=None, y=None):
     return action
 
 
-def main():
+
+
+
+# def push_action_and_stats(params):
+
+def run_and_add_stats(args):
+    """
+    Process args and send them along as an action dictionary. Generate
+    and send additional dictionaries to show system stats on the screen
+    (displayed along with any custom text that may be in args). Any arg
+    that applies to the entire operation may be either used only on the
+    first action or appended to every action, as appropriate. You
+    should send only the slice sys.argv[1:] if using sys.argv, as even
+    the first index of args will be processed, but sys.argv[0] is the
+    system command (which this function will not understand).
+    """
+
     # show_lines_for_headless(["Hello World!"])
     slash_name = "primary /"
     drive2_name = "Home"
@@ -290,15 +310,13 @@ def main():
             )
         else:
             stat_list.append(fmt.format(name, "missing"))
-    args = [sys.argv[0]]
     params = {}
 
     # Parse the params for filtering only
     # --still pass them as terminal params.
     custom_lines = []
-    custom_params = {}
-    for i in range(1, len(sys.argv)):
-        arg = sys.argv[i]
+    for i in range(0, len(args)):
+        arg = args[i]
         if arg.startswith("--") and not arg.startswith("---"):
             ender = len(arg)
             sign_i = arg.find("=")
@@ -322,14 +340,14 @@ def main():
     x = params.get("x")
     y = params.get("y")
     clock_d = None
-    batches = {}
-    order = ["timestamp", "stats"]
+    batch = {}
+    batch_order = ["timestamp", "stats"]
     if params.get("clock") is not None:
         # Generate clock BEFORE x and y are set forcibly below.
         clock_d = generate_action(params, None)
-        batches["clock"] = clock_d
+        batch["clock"] = clock_d
         del params["clock"]  # don't keep putting clock everywhere below
-        order.append("clock")
+        batch_order.append("clock")
     if x is None:
         x = 0
     if y is None:
@@ -339,9 +357,8 @@ def main():
 
     now = datetime.now()
     now_s = now.strftime("%Y-%m-%d %H:%M:%S")
-    # args[len(args)-1] += "\t\t{}".format(now_s)
 
-    batches["stats"] = stat_d
+    batch["stats"] = stat_d
     timestamp_lines = []
     timestamp_lines.append("on {}".format(os.uname()[1]))
     timestamp_lines.append("@" + now_s)
@@ -349,7 +366,7 @@ def main():
     push_down = (len(stat_list)-len(timestamp_lines))*8
     timestamp_d = generate_action(params, timestamp_lines, x=153,
                                   y=top+push_down)
-    batches["timestamp"] = timestamp_d
+    batch["timestamp"] = timestamp_d
 
     if len(custom_lines) > 0:
         # for k, v in params.items():
@@ -357,15 +374,15 @@ def main():
         #         print("* more lines: --{}={}".format(k, v))
         #         custom_lines.append("--{}={}".format(k, v))
         custom_d = generate_action(params, custom_lines, x=y, y=y)
-        batches["custom"] = custom_d
-        order.append("custom")
+        batch["custom"] = custom_d
+        batch_order.append("custom")
         # print("{} custom line(s)".format(len(custom_lines)))
     else:
         print("There are no custom lines.")
     first = True
-    for key in order:
+    for key in batch_order:
         print("")
-        action = batches[key]
+        action = batch[key]
         if not first:
             try:
                 del action["clear"]
@@ -394,6 +411,10 @@ def main():
             print('* {}'.format(results))
             if info_s is not None:
                 print("\n".join(info_s.split("\\n")))
+
+
+def main():
+    run_and_add_stats(sys.argv[1:])
 
 
 if __name__ == "__main__":

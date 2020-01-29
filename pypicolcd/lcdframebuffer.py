@@ -177,14 +177,19 @@ class LCDServer(asyncore.dispatcher):
             # The systemd module did not import.
             pass
 
+    def blab(self, msg):
+        if self.service is not None:
+            if self.service.p is not None:
+                self.service.p.blab(msg)
+
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
             now = datetime.now()
             now_s = now.strftime("%Y-%m-%d %H:%M:%S")
             sock, addr = pair
-            print("{}: Incoming connection from"
-                  " {}".format(now_s, repr(addr)))
+            self.blab("{}: Incoming connection from"
+                      " {}".format(now_s, repr(addr)))
             handler = LCDRequestHandler(sock, self.service)
 
 
@@ -202,7 +207,9 @@ class ClockThread(Thread):
             while not self.stopEvent.wait(0.5):
                 self.lfbs.update_clock()
                 if self.lfbs.keepAliveThread is None:
-                    if not self.lfbs.dieFlag.is_set():
+                    if not self.lfbs.noKeepAlive.is_set():
+                        # ^ Purposely check the flag for the OTHER
+                        # thread, since the following restarts that one:
                         print("* The ClockThread"
                               " is restarting KeepAlive.")
                         self.lfbs._run_keep_alive()
@@ -227,6 +234,8 @@ class KeepAliveThread(Thread):
             while not self.stopEvent.wait(2.0):
                 if self.lfbs.clockThread is None:
                     if not self.lfbs.stopFlag.is_set():
+                        # ^ Purposely check the flag for the OTHER
+                        # thread, since the following restarts that one:
                         self.prev_ready = False  # why: error ends clock
                         print("* KeepAlive is restarting"
                               " the draw timer...")
@@ -274,7 +283,7 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         self.clockThread = None
         self.keepAliveThread = None
         self.stopFlag = Event()
-        self.dieFlag = Event()
+        self.noKeepAlive = Event()
         self.p = PicoLCD()
         if logger is None:
             logging.getLogger('lcd-fb')
@@ -334,7 +343,7 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
     def _run_keep_alive(self):
         if self.keepAliveThread is not None:
             raise RuntimeError("There is already one KeepAlive thread.")
-        self.keepAliveThread = KeepAliveThread(self.dieFlag, self)
+        self.keepAliveThread = KeepAliveThread(self.noKeepAlive, self)
         self.keepAliveThread.start()
 
     def get_usage(self):
@@ -550,7 +559,7 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         print("* setting thread stop flags in "
               "lcdframebuffer:LCDFramebufferServer:handle_signal...")
         self.stopFlag.set()
-        self.dieFlag.set()
+        self.noKeepAlive.set()
         self.close()
         time.sleep(1)
         print("* trying to end (join) clock thread manually...")
@@ -619,6 +628,8 @@ def main():
     finally:
         print("* setting stop flag in lcdframebuffer:main...")
         lfbs.stopFlag.set()
+        print("* setting noKeepAlive flag in lcdframebuffer:main...")
+        self.noKeepAlive.set()
     # Ignore code below, and use the asynccore subclass above instead.
     # See [Nischaya Sharma's Nov 29, 2018 answer edited Feb 16, 2019 by
     # Mohammad Mahjoub](https://stackoverflow.com/a/53536336)

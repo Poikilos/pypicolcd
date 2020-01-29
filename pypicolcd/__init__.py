@@ -842,7 +842,9 @@ class PicoLCD:
             abs_x += count_x + spacing_x
             # scrolling is caught next time, see start of method above
         self._pos = abs_x, abs_y
-        return self.refresh()
+        if self.ready() and refresh_enable:
+            return self.refresh()
+        return False
 
     def draw_text(self, row, col, text, font=None, font_path=None,
                   font_size=None, threshold=None,
@@ -1125,7 +1127,14 @@ class PicoLCD:
     # zone_stop_x: refresh part of last zone in zone list (if -1,
     #   refresh entire zone; if 0, do not refresh anything so calling
     #   this method was a waste of time)
-    def invalidate(self, zones=None, blocks=None, zone_stop_x=-1):
+    def invalidate(self, zones=None, blocks=None, zone_stop_x=-1,
+                   enable_reconnect=True):
+        if not self.ready():
+            if enable_reconnect:
+                if not self.connect():
+                    return False
+            else:
+                return False
         self.invalidate_dt = datetime.now()
         self.blab("* invalidate")
         if zones is None:
@@ -1423,9 +1432,10 @@ class PicoLCD:
 
     def clear(self, enable_reconnect=True):
         self.reset_framebuffer(enable_reconnect=enable_reconnect)
-        self.invalidate()
-        self.refresh(enable_reconnect=enable_reconnect)
-        self.preview_flag = True
+        if self.ready():
+            self.invalidate(enable_reconnect=enable_reconnect)
+            self.refresh(enable_reconnect=enable_reconnect)
+            self.preview_flag = True
 
     def set_backlight_f(self, level, enable_reconnect=True):
         """
