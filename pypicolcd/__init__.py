@@ -709,7 +709,7 @@ class PicoLCD:
                 try:
                     fnt = fc[font_path][fss]
                     if len(c.strip()) > 0:
-                        self.blab("* drawing '{}'...".format(c))
+                        self.blab("* drawing glyph '{}'...".format(c))
                         _d.text((0, 0), c, font=fnt,
                                 fill=(255, 255, 255, 255))
                         start_enable = False
@@ -954,7 +954,7 @@ class PicoLCD:
             # self.blab("* getting draw buffer from _im")
             _d = ImageDraw.Draw(self._im)
             try:
-                self.blab("* drawing '{}' at {} using fnt {} on PIL"
+                self.blab("* drawing text '{}' at {} using fnt {} on PIL"
                           " Draw object".format(text, pos, fnt))
                 # TODO: _d.text sometimes causes
                 # `Segmentation fault (core dumped)`
@@ -963,6 +963,12 @@ class PicoLCD:
                 # corrupted size vs. prev_size
                 # Aborted (core dumped)
                 # ```:
+                # or
+                # ```
+                # munmap_chunk(): invalid pointer
+                # lcd-fb.service: Main process exited, code=dumped, status=6/ABRT
+                # lcd-fb.service: Failed with result 'core-dump'.
+                # ```
                 _d.text(pos, text, font=fnt, fill=(255, 255, 255, 255))
                 pos_list = []
                 self.blab("* drawing text from buffer")

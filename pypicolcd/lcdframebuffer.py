@@ -264,6 +264,7 @@ class KeepAliveThread(Thread):
                         pass
         except Exception as e:
             print("* KeepAlive error: {}".format(e))
+            print(sys.exc_info()[0])
         finally:
             print("* KeepAlive ended.")
             self.lfbs.keepAliveThread = None
@@ -629,7 +630,7 @@ def main():
         print("* setting stop flag in lcdframebuffer:main...")
         lfbs.stopFlag.set()
         print("* setting noKeepAlive flag in lcdframebuffer:main...")
-        self.noKeepAlive.set()
+        lfbs.noKeepAlive.set()
     # Ignore code below, and use the asynccore subclass above instead.
     # See [Nischaya Sharma's Nov 29, 2018 answer edited Feb 16, 2019 by
     # Mohammad Mahjoub](https://stackoverflow.com/a/53536336)
