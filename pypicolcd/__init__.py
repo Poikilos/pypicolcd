@@ -279,7 +279,8 @@ class PicoLCD:
         self._fps_accumulated_time = 0.
         self._fps_accumulated_count = 0
 
-    def get_font_names(self):
+    @staticmethod
+    def get_font_names():
         return font_meta.keys()
 
     def connect(self, silent=False, enable_reset=True):
@@ -1142,7 +1143,7 @@ class PicoLCD:
                    enable_reconnect=True):
         if not self.ready():
             if enable_reconnect:
-                if not self.connect():
+                if not self.reconnect():
                     return False
             else:
                 return False

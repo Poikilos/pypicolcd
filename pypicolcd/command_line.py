@@ -19,9 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from pypicolcd import lcdclient
+from pypicolcd.lcdframebuffer import LCDFramebufferServer  # get_usage
+
 
 import sys
 import logging
+import socket  # gethostname etc
 
 
 def customDie(msg, exit_code=1, logger=None):
@@ -39,10 +42,13 @@ def run(args):
     # lfbs = LCDFramebufferServer()
     action = {}
     lines = []
-    if len(args) < 1:
-        sys.stdout.write("You didn't provide any parameters, so there"
-                         " is nothing to do.")
-        return 1
+    if len(args) < 2:
+        postMsg = ""
+        if len(args) > 0:
+            postMsg = " (the first arg to use must be at index 1)"
+        return {"status":"You didn't provide any parameters, so there"
+                         " is nothing to do{}.".format(postMsg)}
+    # print("* preparing an action using args {}...".format(args))
     for i in range(1, len(args)):
         arg = args[i]
         if arg.startswith("--") and not arg.startswith("---"):
@@ -96,12 +102,32 @@ def run(args):
 
 
 def main():
-    results = run(sys.argv)
-    if results.get("status") != "OK":
-        print("* {}".format(results))
-        return 1
+
+    if ("--help" not in sys.argv) and (len(sys.argv) > 1):
+        results = run(sys.argv)
+        if results.get("status") != "OK":
+            print("* {}".format(results))
+            error = results.get('error')
+            if error is not None:
+                if "ConnectionRefusedError" in error:
+                    print("")
+                    hostname = socket.gethostname()
+                    IPAddr = socket.gethostbyname(hostname)
+                    print("Try adding the following: --host={}"
+                          "".format(IPAddr))
+                    print("")
+            return 1
+        else:
+            print('* The server responded with: {}'.format(results))
     else:
-        print('* The server responded with: {}'.format(results))
+        print("")
+        print("")
+        print(LCDFramebufferServer.get_usage())
+        if len(sys.argv) < 2:
+            print("")
+            print("You did not supply any arguments, so the client did"
+                  " not send any data.")
+        print("")
     return 0
 
 

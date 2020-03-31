@@ -278,7 +278,43 @@ def get_commands():
     return allowed_commands
 
 
+config_help = {
+    "verbose": "Write everything to the server console.",
+    "clock": ("Turn the clock on or off (pass x"
+              " and/or y along with the clock"
+              " option to change its position)."),
+    "background": ("Specify the path to an image"
+                   " to draw before the text."),
+    "foreground": ("Specify the path to an image"
+                   " to draw after the text."),
+    "backlight": "Set the LCD backlight level (0 to 255).",
+    "lines": ("Provide a list of lines that"
+              " should display on the screen,"
+              " where the next line should wrap"
+              " to line under the first."),
+    "font": ("Provide the name of a built-in"
+             " font (case-insensitive): "
+             + " ".join(PicoLCD.get_font_names())),
+    "x": "Set the x location for this command.",
+    "y": "Set the y location for this command.",
+    "clear": "Clear the entire display.",
+    "flash": ("Flash the display off to get the"
+              " viewer's attention."),
+    "push": ("Push text from left to right, then"
+             " scroll the display when more text"
+             " is written after reaching the"
+             " end."),
+    "help": "Show a list of options.",
+    "refresh": ("Draw the buffer (such as in"
+                " case the device disconnected"
+                " without the framebuffer"
+                " knowing nor invalidating based"
+                " on that knowledge).")
+}
+
+
 class LCDFramebufferServer(asyncore.dispatcher_with_send):
+
 
     def __init__(self, logger=None):
         self.clockThread = None
@@ -299,39 +335,6 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         self.config_help = {}
         self.allowed_names = ["background", "foreground", "backlight",
                               "lines", "font", "x", "y"]
-        self.config_help["verbose"] = ("Write everything to the server"
-                                       " console.")
-        self.config_help["clock"] = ("Turn the clock on or off (pass x"
-                                     " and/or y along with the clock"
-                                     " option to change its position).")
-        self.config_help["background"] = ("Specify the path to an image"
-                                          " to draw before the text.")
-        self.config_help["foreground"] = ("Specify the path to an image"
-                                          " to draw after the text.")
-        self.config_help["backlight"] = ("Set the LCD backlight level"
-                                         " (0 to 255).")
-        self.config_help["lines"] = ("Provide a list of lines that"
-                                     " should display on the screen,"
-                                     " where the next line should wrap"
-                                     " to line under the first.")
-        self.config_help["font"] = ("Provide the name of a built-in"
-                                    " font (case-insensitive): ")
-        self.config_help["font"] += " ".join(self.p.get_font_names())
-        self.config_help["x"] = "Set the x location for this command."
-        self.config_help["y"] = "Set the y location for this command."
-        self.config_help["clear"] = "Clear the entire display."
-        self.config_help["flash"] = ("Flash the display off to get the"
-                                     " viewer's attention.")
-        self.config_help["push"] = ("Push text from left to right, then"
-                                    " scroll the display when more text"
-                                    " is written after reaching the"
-                                    " end.")
-        self.config_help["help"] = "Show a list of options."
-        self.config_help["refresh"] = ("Draw the buffer (such as in"
-                                       " case the device disconnected"
-                                       " without the framebuffer"
-                                       " knowing nor invalidating based"
-                                       " on that knowledge).")
         self._run_clock()
         self._run_keep_alive()
 
@@ -347,14 +350,15 @@ class LCDFramebufferServer(asyncore.dispatcher_with_send):
         self.keepAliveThread = KeepAliveThread(self.noKeepAlive, self)
         self.keepAliveThread.start()
 
-    def get_usage(self):
+    @staticmethod
+    def get_usage():
         s = ""
         s += "==================== Usage ===================="
         s += ("\nParams should be followed by an equal sign"
-              " except for booleans and commands, which will be set to."
-              " true.")
+              " except for booleans and commands, which will be set to"
+              " true automatically.")
         s += "\nParams:"
-        for k, v in self.config_help.items():
+        for k, v in config_help.items():
             s += "\n--" + k
             s += "\n  " + v
         # s += "\n"
@@ -620,17 +624,23 @@ def main():
     lfbs.push_action(action)
 
     # See https://docs.python.org/2/library/asyncore.html
-    server = LCDServer(host, LCD_PORT, lfbs)
+    server = None
     try:
-        asyncore.loop()
-    except Exception as e:
-        print("* asyncore.loop failed in lcdframebuffer:main:"
-              " {}".format(e))
-    finally:
-        print("* setting stop flag in lcdframebuffer:main...")
-        lfbs.stopFlag.set()
-        print("* setting noKeepAlive flag in lcdframebuffer:main...")
-        lfbs.noKeepAlive.set()
+        server = LCDServer(host, LCD_PORT, lfbs)
+        try:
+            asyncore.loop()
+        except Exception as e:
+            print("* asyncore.loop failed in lcdframebuffer:main:"
+                  " {}".format(e))
+        finally:
+            print("* setting stop flag in lcdframebuffer:main...")
+            lfbs.stopFlag.set()
+            print("* setting noKeepAlive flag in lcdframebuffer:main...")
+            lfbs.noKeepAlive.set()
+    except OSError as e:
+        print("Binding the LCDFramebufferServer to {}:{} failed."
+              "".format(host, LCD_PORT))
+        print(str(e))
     # Ignore code below, and use the asynccore subclass above instead.
     # See [Nischaya Sharma's Nov 29, 2018 answer edited Feb 16, 2019 by
     # Mohammad Mahjoub](https://stackoverflow.com/a/53536336)

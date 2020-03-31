@@ -18,9 +18,11 @@ import copy
 try:
     from urllib.parse import urlparse
     from urllib.parse import quote
+    from urllib.parse import unquote
 except ImportError:
     from urlparse import urlparse
     from urllib import quote
+    from urllib import unquote
 # TODO: gradually add features from example-cli.py
 
 
@@ -159,4 +161,8 @@ def send_action(action):
     client = LCDFramebufferClient(host, '/'+url_args, action, port=port,
                                   results=results)
     asyncore.loop()
+    error = results.get("error")
+    if error is not None:
+        if "ConnectionRefusedError" in error:
+            results['error'] += " Try specifying host as a LAN address."
     return results

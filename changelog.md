@@ -1,8 +1,19 @@
- # Changelog
+# Changelog
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a
 Changelog](https://keepachangelog.com/en/1.0.0/).
+
+
+## [git] - 2020-03-31
+### Fixed
+- (lcd-cli) Respond to `--help` or no params with usage.
+- Fix the level 1 Markdown heading in the Changelog.
+
+### Changed
+- Make the usage text accessible via static methods.
+- If `ConnectionRefusedError` occurs, suggest using `--host=<lan_ip>`
+  instead of default (localhost).
 
 
 ## [git] - 2020-01-23
@@ -89,7 +100,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
     parent devices, but still works.
     - See
       <https://github.com/JamesTheAwesomeDude/pyPicoLCD/blob/full-reimplimentation/60-lcd.rules>
-- Handle diconnects (see README.md).
+- Handle disconnects (see readme.md).
 - Fix backlight level method (and rename to `set_backlight`).
 - Fix flash method.
 - Allow sending bytestrings of arbitrary length using testing.pyw.
@@ -104,7 +115,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 - The command is now lcd-cli (It still uses command_line.py).
 - The pip install now works properly, and imports work properly.
 - The module name is now consistent (pypicolcd).
-- Old changes from the README.md are now in this file.
+- Old changes from the readme.md are now in this file.
 
 
 ## [git] - 2020-01-15

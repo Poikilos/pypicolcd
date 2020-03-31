@@ -3,7 +3,7 @@ import setuptools
 # For nose, see https://github.com/poikilos/mgep/blob/master/setup.py
 
 long_description = ""
-with open("README.md", "r") as fh:
+with open("readme.md", "r") as fh:
     long_description = fh.read()
 setuptools.setup(
     name='pypicolcd',
