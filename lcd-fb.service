@@ -1,6 +1,8 @@
 [Unit]
 Description="pypicolcd LCD Framebuffer Service"
-After=network.target
+# After=network.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple

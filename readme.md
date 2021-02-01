@@ -32,6 +32,9 @@ where `\`hostname -i\`` is your IP address.
 - Uninstall lcd4linux if present: pypicolcd is not designed to work while lcd4linux is installed.
 - pypicolcd uses Python 3, and though has some Python 2 considerations, is not thoroughly tested on Python 2. Therefore, make sure virtualenv is Python 3 by default, otherwise follow a guide to use the Python 3 virtualenv (such as [Installing and using virtualenv with Python 3](https://help.dreamhost.com/hc/en-us/articles/115000695551-Installing-and-using-virtualenv-with-Python-3)).
   - The client side is working with Python 2 as part of developing <https://github.com/poikilos/OctoPrint-picoLCD-Progress>.
+- Ensure that `NetworkManager-wait-online` is enabled and working:
+  `systemctl enable NetworkManager-wait-online.service`
+  `systemctl status NetworkManager-wait-online.service`
 - Install via pip to get all dependencies:
 ```bash
 customDie() {
