@@ -39,12 +39,14 @@ except ImportError as e:
     # NOTE: ModuleNotFoundError is only available in Python 3.
     if "pypicolcd requires pyusb" in str(e):
         raise e
-    else:
+    elif "No module named 'pypicolcd'" in str(e):
         raise ImportError("pypicolcd is not present--try"
                           " installing it via pip in a"
                           " virtualenv to automatically get all"
                           " dependencies--see README.md in"
                           " pypicolcd")
+    else:
+        raise
 
 try:
     import tkinter as tk

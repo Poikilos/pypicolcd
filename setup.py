@@ -39,6 +39,6 @@ setuptools.setup(
     },
     install_requires=[
         'pyusb',
-        'Pillow'
+        'Pillow',
     ]
  )
