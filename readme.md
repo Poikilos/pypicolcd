@@ -1,9 +1,11 @@
 # pypicolcd
 <https://github.com/poikilos/pypicolcd>
 
+If you are using Windows, special steps are necessary. See [Windows](#Windows).
 
 Draw to picoLCD 256x64 and 20x4 using only pyusb (no driver required!) by importing the PicoLCD class.
 ![kitten](https://github.com/poikilos/pypicolcd/raw/master/screenshot.jpg)
+
 
 ## Main Features
 * Easy: see <https://github.com/poikilos/pypicolcd/blob/master/example.py>
@@ -22,11 +24,13 @@ lcd-fb --localhost=`hostname -i`
 ```
 where `\`hostname -i\`` is your IP address.
 
+
 ## Compare
 - This module does not require a (non-Python kernel) driver unlike pyusblcd in the PyPI repository.
 - This module has a persistent framebuffer server unlike other driverless modules named similarly such as [JamesTheAwesomeDude/pyPicoLCD](https://github.com/JamesTheAwesomeDude/pyPicoLCD) and [itszero/picoLCD256x64](https://github.com/itszero/picoLCD256x64).
 - This module uses pyusb for driverless access and implements a lcd-cli command similarly to how [rebeccaskinner/lcddeamon](https://github.com/rebeccaskinner/lcddeamon) uses libusb for driverless access and implements a usblcd command, but that daemon is written in c.
 - lcd4linux is a tool that only writes data using shell expressions in lcd4linux.conf, yet has some features such as bold text and progress bars (which are usually used as meters).
+
 
 ## Install
 - Uninstall lcd4linux if present: pypicolcd is not designed to work while lcd4linux is installed.
@@ -90,6 +94,36 @@ deactivate
   - You still must activate the venv, such as by running `source ~/lcd/bin/activate`, then do
   `pip install --upgrade ~/git/pypicolcd && rm -rf ~/lcd/lib/python3.7/site-packages/pypicolcd/__pycache__/ && sudo systemctl daemon-reload && sudo systemctl restart lcd-fb`
 
+### Windows
+
+If 0 devices are listed, that is unfortunately expected on Windows
+(It is not fixable without a driver installer that adds an INF
+file to your system, and that will probably not happen unless someone
+contributes such an INF file--See
+[issue #11](https://github.com/Poikilos/pypicolcd/issues/11)). The
+following manual steps are necessary.
+
+> See [Turbo J's answer](https://stackoverflow.com/a/5767737/1619432).
+> To install the USB driver `libusb` for your device I found two options:
+> - Use [libusb-win32](http://www.libusb.org/wiki/libusb-win32)'s
+>   `inf-wizard.exe` to create the INF file and then use
+>   `install-filter-win.exe` to install libusb as driver for your device.
+> - Use [zadig](http://zadig.akeo.ie/) (simpler)
+>   - if no device is shown, Options > List All Devices
+>   - select `libusb-win32` as driver to be installed
+
+-[answered Oct 3, 2016 at 13:52](https://stackoverflow.com/a/39833322) by handle
+
+Workaround:
+
+> Libusb requires you to install a special driver for every device you
+> want to use it with. That usually requires you to write an .inf file
+> containing the USB IDs of the device. Only if the driver and inf file
+> are installed libusb will be able to "see" your device.
+
+-[answered Apr 23, 2011 at 23:52](https://stackoverflow.com/a/5767737) by Turbo J
+
+
 ## Usage
 * Draw Image:
   * pos is an x,y tuple
@@ -109,9 +143,11 @@ deactivate
     - Otherwise, you should send the `refresh` command (such as
       `lcd-cli --refresh`) to redraw the offscreen buffer.
 
+
 ## Known Issues
 - [ ] If possible, read the state of buttons on the unit (also via pyusb).
 - [ ] Add an option to disconnect from the device so it can be used by other processes.
+
 
 ## Troubleshooting
 - Detecting resets (normally from the device being disconnected) is
@@ -120,6 +156,7 @@ deactivate
   incorrect until you call `clear()` on the PicoLCD instance (certain
   pixels involved in the command will not change if they would match the
   existing framebuffer--this is the expected behavior).
+
 
 ## Authors
 * resources from external sources:

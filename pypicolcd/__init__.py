@@ -32,8 +32,9 @@ try:
     import usb
 except ImportError:
     # NOTE: ModuleNotFoundError is only available in Python 3.
-    raise ImportError("pypicolcd requires pyusb (see"
-                      " \"Install\" in README.md)")
+    raise ImportError(
+        'pypicolcd requires pyusb (see "Install" in readme.md)'
+    )
 
 # TODO: remove about_msg and use pypicolcd.__doc__ (generated from
 # docstring above) instead?
@@ -407,7 +408,7 @@ class PicoLCD:
                 curframe = inspect.currentframe()
                 calframe = inspect.getouterframes(curframe, 2)
                 w_msg = " in " + calframe[1][3]
-            print("[ pypicolcd ] (verbose message" + w_msg + ") " + msg)
+            print("[ pypicolcd ] (verbose message {}) {}".format(w_msg, msg))
 
     def get_width(self):
         return self.dc["width"]

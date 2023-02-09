@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from datetime import datetime
 import time
 import binascii
+import platform
 try:
     from pypicolcd import PicoLCD
     try:
@@ -59,6 +60,7 @@ except ImportError:  # Python 2
 
 import os
 my_path = os.path.abspath(os.path.dirname(__file__))
+
 
 def local_resource(path):
     ret = None
@@ -213,7 +215,11 @@ else:
     error = p.error
     if error is None:
         error = "Unknown error"
-    error_text = tk.Text(root) # , text=error, justify=tk.LEFT)
+    else:
+        if platform.system() == "Windows":
+            error += (" If there are 0 devices on Windows,"
+                      " see Windows section in readme.")
+    error_text = tk.Text(root)  # , text=error, justify=tk.LEFT)
     error_text.pack()
     error_text.insert(tk.INSERT, error)
 
