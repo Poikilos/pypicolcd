@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from collections import OrderedDict
 import time
 from datetime import datetime
 import sys
@@ -249,6 +250,43 @@ for name, meta in font_meta.items():
 
 def get_font_meta(name):
     return font_meta.get(name.lower())
+
+
+class Block:
+    def __init__(self, zone, block, end_x=0):
+        assert zone is not None
+        assert block is not None
+        assert isinstance(end_x, int)
+        self.zone = zone
+        self.block = block
+        self.end_x = end_x
+
+    def extend(self, end_x):
+        if isinstance(end_x, Block):
+            end_x = end_x.end_x
+        if end_x > self.end_x:
+            self.end_x = end_x
+
+    def copy(self):
+        block = Block(self.zone, self.block, end_x=self.end_x)
+        return block
+
+    def spatialIndex(self):
+        return "{},{}".format(self.zone, self.block)
+
+
+class Blocks:
+    def __init__(self):
+        self.blocks = OrderedDict()
+
+    def extend(self, source):
+        key = source.spatialIndex()
+        if key not in self.blocks:
+            dest = source.copy()
+            self.blocks[key] = dest
+        else:
+            dest = self.blocks[key]
+        dest.extend(source)
 
 
 class PicoLCD:
@@ -1064,6 +1102,8 @@ class PicoLCD:
     #   threshold=None
     def draw_image(self, pos, path, threshold=None, invert_enable=False,
                    brightness=1.0):
+        start_time = best_timer()  # Start high-resolution timing with default_timer
+
         brightness *= 2
         try:
             im = Image.open(path)
@@ -1128,6 +1168,10 @@ class PicoLCD:
             print("[ PicoLCD ] ERROR--could not finish loading image:"
                   " {}".format(e))
             # view_traceback()
+        end_time = best_timer()  # End high-resolution timing with default_timer
+        total_time = end_time - start_time
+        total_time_ms = (end_time - start_time) * 1000
+        print(f"draw_image {total_time_ms:.1f}ms")
 
     # Invalidate rectangle of lcd to force refresh to refresh them
     #   next time refresh is called (if no params, then entire screen:
@@ -1387,6 +1431,9 @@ class PicoLCD:
             #     msg = "not refreshing"
             # print(msg + " " + str((zone_i, block_i)))
             self.refresh_block(zone_i, block_i, zone_stop_x=byte_i+1)
+        # return is commented since
+        # draw_image already uses refresh=False and invalidation.
+        # return Block(zone_i, block_i, end_x=byte_i+1)
 
     def set_preview_flag(self, dirty):
         self.preview_flag = dirty

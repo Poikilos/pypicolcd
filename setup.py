@@ -38,7 +38,7 @@ setuptools.setup(
                             'lcd-stats=pypicolcd.stats:main'],
     },
     install_requires=[
-        'pyusb',
+        'pyserial',
         'Pillow',
     ]
  )

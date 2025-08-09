@@ -22,24 +22,25 @@ from datetime import datetime
 import time
 import binascii
 import platform
+from timeit import default_timer
 try:
     from pypicolcd import PicoLCD
     try:
         from pypicolcd import OUT_REPORT_CMD_DATA
     except ImportError:
-        raise ImportError("Missing OUT_REPORT_CMD_DATA")
+        raise ImportError("Missing pypicolcd.OUT_REPORT_CMD_DATA")
     try:
         from pypicolcd import OUT_REPORT_DATA  # by sphinx
     except ImportError:
-        raise ImportError("Missing OUT_REPORT_DATA")
+        raise ImportError("Missing pypicolcd.OUT_REPORT_DATA")
     try:
         from pypicolcd import find_resource
     except ImportError:
-        raise ImportError("Missing find_resource")
+        raise ImportError("Missing pypicolcd.find_resource")
 except ImportError as e:
     # NOTE: ModuleNotFoundError is only available in Python 3.
     if "pypicolcd requires pyusb" in str(e):
-        raise e
+        raise
     elif "No module named 'pypicolcd'" in str(e):
         raise ImportError("pypicolcd is not present--try"
                           " installing it via pip in a"
@@ -54,9 +55,9 @@ try:
     import tkinter.font as tkFont
     import tkinter.ttk as ttk
 except ImportError:  # Python 2
-    import Tkinter as tk
-    import tkFont
-    import ttk
+    import Tkinter as tk  # type:ignore
+    import tkFont # noqa:F401 # type:ignore
+    import ttk  # noqa:F401 # type:ignore
 
 import os
 my_path = os.path.abspath(os.path.dirname(__file__))
@@ -233,11 +234,16 @@ r_frame.pack(expand=True, fill='both', side='right')
 this_root = l_frame
 
 def clear_canvas():
+    start_time = default_timer()
     canvas.delete("all")
     canvas.create_rectangle(
         0, 0, p.dc["width"], p.dc["height"],
         outline="#fff", fill="#fff")
     p.set_preview_flag(False)
+    end_time = default_timer()  # End high-resolution timing with default_timer
+    total_time = end_time - start_time
+    total_time_ms = (end_time - start_time) * 1000
+    print(f"clear_canvas {total_time_ms:.1f}ms")
 
 def clear_canvas_and_warn():
     print("* WARNING: The device reset, so the"
@@ -288,14 +294,21 @@ text_entry.insert(0, "status:")
 threshold = .5
 threshold_enable_ivar = tk.IntVar()
 
+
 def draw_from_source():
     clear_click(clear_source_enable=False)
+    start_time = default_timer()
     src_w = p.dc["width"]
     src_h = p.dc["height"]
     for y in range(src_h):
         for x in range(src_w):
             if p.get_pixel((x,y)):
                 set_canvas_pixel((x,y))
+    end_time = default_timer()  # End high-resolution timing with default_timer
+    total_time = end_time - start_time
+    total_time_ms = (end_time - start_time) * 1000
+    print(f"draw_from_source {total_time_ms:.1f}ms")
+
 
 threshold_entry = None
 image_pos_x_entry = None
